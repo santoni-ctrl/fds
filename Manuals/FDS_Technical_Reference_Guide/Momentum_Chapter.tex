@@ -118,14 +118,6 @@ Most simple LES subgrid closures take production of subgrid kinetic energy to be
 \end{align}
 Using a model kinetic energy spectrum (see \cite{Pope:2000}), Eq.~(\ref{eqn_ke_dissipation}) can be used to derive theoretical values for model constants, such as the Smagorinsky constant, discussed below.  See Appendix \ref{app:lilly_analysis}.
 
-\subsection{Wind Fields via Mean Forcing or Nudging}
-\label{sec:windfieldnudging}
-
-A common technique used in data assimilation referred to as mean forcing or {\em nudging} is applied to model wind fields~\cite{Kalnay:2003}. Given a vertically and temporally varying wind field, $\bu_\infty(z,t)$, that is assumed to apply to the entire computational domain, a forcing term is added to the momentum equation:
-\be
-   \frac{\partial \bu}{\partial t} = \ldots + \frac{\bu_\infty - \overline{\bu}}{\tau}
-\ee
-where $\overline{\bu}$ is the average velocity vector over a particular horizontal slice of the atmosphere (typically a single horizontal row of grid cells). The relaxation time scale, $\tau$, is chosen by the user such that the computed velocity field faithfully follows the specified wind field. In cases where the wind is steady, the value of $\tau$ can be fairly large and hence the forcing term fairly small. However, if the wind field fluctuates rapidly in time, the value of $\tau$ needs to be chosen based on some trial and error.
 
 \newpage
 \section{Models for the Turbulent Viscosity}
@@ -219,7 +211,7 @@ For regions of high turbulence intensity ($\mu_t \gg \mu$), RNG recovers the con
 \subsection{Wall-Adapting Local Eddy-viscosity (WALE) Model}
 \label{sec:wale}
 
-The Wall-Adapting Local Eddy-viscosity, or WALE, model of Nicoud and Ducros \cite{Nicoud:1999} was originally conceived as a method for properly scaling the eddy viscosity in the vicinity of a wall.  While the invariant used in the Smagorinsky model $|S|$ is $O(1)$ near a wall, the invariant designed for WALE correctly scales as $O(y^3)$, where $y$ is the distance from the wall.  Thus, the WALE model may be used as an alternative to Van Driest damping near the wall (see Sec.~\ref{sec:wall_damping}).  The dynamic turbulent viscosity is written as follows:
+The Wall-Adapting Local Eddy-viscosity, or WALE, model of Nicoud and Ducros \cite{Nicoud:1999} was originally conceived as a method for properly scaling the eddy viscosity in the vicinity of a wall.  While the invariant used in the Smagorinsky model $|S|$ is $O(1)$ near a wall, the invariant designed for WALE correctly scales as $O(y^3)$, where $y$ is the distance from the wall.  The WALE model is used for the eddy viscosity in the first off-wall grid cell.  The dynamic turbulent viscosity is written as follows:
 \begin{equation}
 \label{eq:wale}
 \mu_{\si{t}} = \rho (C_{\si{w}} \Delta)^2 \frac{(S^d_{ij} S^d_{ij})^{3/2}}{(S_{ij} S_{ij})^{5/2} + (S^d_{ij} S^d_{ij})^{5/4}}
@@ -393,7 +385,7 @@ F_{{\rm B},\z,ijk} &=  - \frac{\tp_{ij,k+1}  \, \rho_{ijk} + \tp_{ijk} \, \rho_{
 \end{align}
 Notice the somewhat unusual discretization of the term $\tp \, \nabla (1/\rho)$, which is needed to be consistent with the discretization of the other two terms in Eq.~(\ref{p_decomp}):
 \begin{align}
-  \frac{1}{(\rho_{ijk}+\rho_{i,jk})/2} \frac{\tp_{i+1,jk}-\tp_{ijk}}{\dx} =& \frac{1}{\dx} \left( \frac{\tp_{i+1,jk}}{\rho_{i+1,jk}}-\frac{\tp_{ijk}}{\rho_{ijk}} \right) \nonumber \\[.1in]
+  \frac{1}{(\rho_{ijk}+\rho_{i+1,jk})/2} \frac{\tp_{i+1,jk}-\tp_{ijk}}{\dx} =& \frac{1}{\dx} \left( \frac{\tp_{i+1,jk}}{\rho_{i+1,jk}}-\frac{\tp_{ijk}}{\rho_{ijk}} \right) \nonumber \\[.1in]
   & - \frac{\tp_{i+1,jk} \, \rho_{ijk} + \tp_{ijk} \, \rho_{i+1,jk}}{\rho_{ijk}+\rho_{i+1,jk}} \frac{1}{\dx} \left( \frac{1}{\rho_{i+1,jk}} - \frac{1}{\rho_{ijk}} \right)
 \end{align}
 
@@ -489,24 +481,32 @@ Boundary conditions at a solid surface fall into three distinct categories:
 \subsubsection{Boundary Conditions at Mesh Interfaces}
 \label{section:mesh_interface}
 
-Dirichlet boundary conditions are applied at the interface between two meshes, which means that $\cH$ is specified at the interface. Consider the interface between two non-overlapping meshes. The value of $\cH$ in the center of the rightmost cell of the left mesh is denoted $\cH_I$, and the value of $\cH$ in the center of the leftmost cell of the right mesh is $\cH_1$. The interface value of the left mesh is denoted $\cH_{I+\ha} \equiv (\cH_I + \cH_{I+1})/2$, and the interface value of the right mesh is denoted $\cH_\ha \equiv (\cH_0 + \cH_1)/2$. The specified value of $\cH$ for both meshes is:
-\be
-   \cH_{\ha}^k = \cH_{I+\ha}^k \equiv \frac{\cH_I^{k-1} + \cH_1^{k-1} }{2} + \frac{\dx}{4\, \dt} \left( u_I^{*,k-1}-u_0^{*,k-1} \right) \label{Hbc}
-\ee
-The superscript $k$ is an iterative index. The terms, $u_I^{*,k-1}$ and $u_0^{*,k-1}$, are first-order estimates of the normal velocity components at the next time step, based on the previous ($k-1$) estimate of the pressure field. For example, the normal velocity at the left mesh interface is calculated:
-\be
-  u_I^{*,k-1} = \bar{u}_I^n - \dt \left( F_{x,I}^{n} + \frac{ \cH_{I+\ha}^{k-1} - \cH_I^{k-1} }{ \dx/2} \right) \quad ; \quad \cH_{I+\ha}^{k-1} = \frac{\cH_I^{k-1}+\cH_1^{k-1}}{2} \label{u_est}
-\ee
-The purpose of the second term on the right hand side of Eq.~(\ref{Hbc}) is demonstrated by substituting $\cH_{I+\ha}^k$ from Eq.~(\ref{Hbc}) into Eq.~(\ref{u_est}) which leads to:
-\be
-   u_I^{*,k-1} = \bar{u}_I^n - \frac{u_I^{*,k-2}-u_0^{*,k-2}}{2} - \dt \left( F_{x,I}^{n} + \frac{ (\cH_I^{k-2}+\cH_1^{k-2})/2 - \cH_I^{k-1} }{ \dx/2} \right) \label{uI}
-\ee
-The extra term on the right hand side drives $u_I$ halfway towards $u_0$, which is itself driven halfway towards $u_I$. This iterative process continues until $\left| u_I^{*,k} - u_0^{*,k} \right|$ falls below a specified tolerance. By default, the tolerance is $\dx/2$.
+Dirichlet boundary conditions are applied at the interface between two meshes, which means that $\cH$, rather than $\nabla \cH$, is specified at the interface. Consider the interface between two non-overlapping meshes that abut at a common $x$ boundary. The value of $\cH$ in the center of the rightmost cell of the left mesh is denoted $\cH_{I,jk}$, and the value of $\cH$ in the center of the leftmost cell of the right mesh is $\cH_{1,jk}$. The interface value of the left mesh is denoted $\cH_{I+\ha,jk}$, and the interface value of the right mesh is denoted $\cH_{\ha,jk}$.
 
-For the corrector step, this procedure is the same, except the boundary condition for the pressure term is:
+At the start of a given time step $n$, the normal component of velocity at the interface of each respective mesh, $\bar{u}_{I,jk}^n$ and $\bar{u}_{0,jk}^n$, are forced to take on the same value, their average from the previous time step. In the predictor phase of the time step, the values are updated independently to provide a first-order estimate at the next time step:
+\begin{eqnarray}
+  u_{I,jk}^{*,m} &=& \bar{u}_{I,jk}^n - \dt \left( F_{x,I,jk}^{n} + \frac{ \cH_{I+\ha,jk}^{m} - \cH_{I,jk}^{m} }{ \dx/2} \right) \quad ; \quad  u_{I,jk}^* = \lim_{m\to \infty} u_{I,jk}^{*,m} \label{u_est} \\[.1in]
+  u_{0,jk}^{*,m} &=& \bar{u}_{0,jk}^n - \dt \left( F_{x,0,jk}^{n} + \frac{ \cH_{1,jk}^{m} - \cH_{\ha,jk}^{m} }{ \dx/2} \right)   \quad ; \quad  u_{0,jk}^* = \lim_{m\to \infty} u_{0,jk}^{*,m} \label{u_est2}
+\end{eqnarray}
+Ideally, these estimated values, $u_{I,jk}^{*,m}$ and $u_{0,jk}^{*,m}$, should be the same, but they are typically not because the respective pressure fields are only guaranteed to be continuous at the interface, not differentiable (smooth). The common value of the pressure field at the interface boundary is:
 \be
-   \cH_{\ha}^k = \cH_{I+\ha}^k \equiv \frac{\cH_I^{k-1} + \cH_1^{k-1} }{2} + \frac{\dx}{2\, \dt} \left( u_I^{n+1,k-1}-u_0^{n+1,k-1} \right)
+   \cH_{\ha,jk}^m \equiv \cH_{I+\ha,jk}^m = \frac{\cH_{I,jk}^{m-1} + \cH_{1,jk}^{m-1} }{2} + \frac{\dx}{4\, \dt} \left( u_{I,jk}^{*,m-1}-u_{0,jk}^{*,m-1} \right) \label{Hbc}
 \ee
+The purpose of the second term on the right hand side of Eq.~(\ref{Hbc}) is seen by substituting $\cH_{I+\ha,jk}^m$ from Eq.~(\ref{Hbc}) into Eq.~(\ref{u_est}) which leads to:
+\be
+   u_{I,jk}^{*,m} = \bar{u}_{I,jk}^n - \frac{u_{I,jk}^{*,m-1}-u_{0,jk}^{*,m-1}}{2} - \dt \left( F_{x,I,jk}^{n} + \frac{ (\cH_{I,jk}^{m-1}+\cH_{1,jk}^{m-1})/2 - \cH_{I,jk}^{m} }{ \dx/2} \right) \label{uI}
+\ee
+The extra term on the right hand side drives $u_{I,jk}^{*,m}$ halfway towards $u_{0,jk}^{*,m}$, and vice versa. This iterative process continues until $\left| u_{I,jk}^{*,m} - u_{0,jk}^{*,m} \right|$ falls below a specified tolerance. By default, the tolerance is $\dx/2$.
+
+For the corrector phase of the time step, the procedure is the same, except the boundary condition for the pressure term is:
+\be
+   \cH_{\ha,jk}^m \equiv \cH_{I+\ha,jk}^m = \frac{\cH_{I,jk}^{m-1} + \cH_{1,jk}^{m-1} }{2} + \frac{\dx}{2\, \dt} \left( u_{I,jk}^{n+1,m-1}-u_{0,jk}^{n+1,m-1} \right) \quad ; \quad  u_{I,jk}^{n+1} = \lim_{m\to \infty} u_{I,jk}^{n+1,m}
+\ee
+The factor of $1/2$ instead of $1/4$ on the last term is due to the structure of the corrector velocity step:
+\be
+   u_{I,jk}^{n+1,m} = \frac{\bar{u}_{I,jk}^n+\bar{u}_{I,jk}^*}{2} - \frac{u_{I,jk}^{n+1,m-1}-u_{0,jk}^{n+1,m-1}}{2} - \frac{\dt}{2} \left( F_{x,I,jk}^{*} + \frac{ (\cH_{I,jk}^{m-1}+\cH_{1,jk}^{m-1})/2 - \cH_{I,jk}^{m} }{ \dx/2} \right) \label{uI2}
+\ee
+Note that throughout this iterative procedure, MPI calls are made to exchange values of $u$ and $\cH$ in the neighboring cells.
 
 \subsection{Iterative Procedure for Updating Velocity}
 \label{section:pressure_iteration}
@@ -568,6 +568,7 @@ Note that for both stages, the normal components of velocity at the interface ar
    \ee
    If the criteria are not met, return to Step~\ref{step3}.
 \end{enumerate}
+This iterative scheme works well for most multiple mesh configurations, but it is excessively slow in the case of tunnel geometries, where potentially dozens of meshes might be aligned end to end to make up the tunnel. In such circumstances, there is an optional pre-conditioning scheme for the solution of the Poisson equation described in Appendix~\ref{tunnel_preconditioner}.
 
 
 
@@ -616,7 +617,7 @@ where $s^+ = s/\delta_\nu$ is the roughness length in viscous units and $s$ is t
 \end{equation}
 where $\tilde{B}_{\rm max} = 9.5$.
 
-\subsection{Atmospheric Boundary Layers}
+\subsection{Atmospheric Boundary Layer Model (Experimental)}
 \label{sec:abl_wall_model}
 
 The formulation for the ABL wall model implemented in FDS follows \cite{Stoll:2008}.  The potential temperature is given by $$\theta=T \left( \frac{p_0}{p} \right)^{R/(W_{\rm air} \, c_p)}$$ where $p_0$ is typically 100~kPa and $R/(W_{\rm air} \, c_p) \approx 0.286$.  The heat flux at the wall is given by
@@ -654,10 +655,15 @@ Once $u_\tau$ has been determined from the model profile, the stress may be obta
 \end{equation}
 Generally, this requires an iterative procedure since $\tau_w$ is needed to define $\delta_\nu$ and hence $y^+$.  The strategy employed in FDS is to first compute $\tau_w$ as if the flow is locally laminar (DNS), and if the calculation is an LES the laminar value is used as an initial guess.  Testing has shown that three iterations is sufficient to converge the residual error in the profile model to 1\%.
 
+\subsection{Near-Wall Eddy Viscosity Model}
+\label{sec:wall_wale_model}
+
+The WALE model (see Sec.~\ref{sec:wale}) is used as the near-wall eddy viscosity model; that is, WALE is used to compute the eddy viscosity for any Cartesian cell adjacent to a solid boundary.  There are two reasons for this.  First, the test filtering operation needed for the subgrid kinetic energy in our implementation of Deardorff's model is not well defined near a wall.  Second, with the WALE model the eddy viscosity goes to zero at the correct rate, $\nu_t = O(y^3)$, without the need for an explicit damping function.
+
 \subsection{Wall Damping of the Turbulent Viscosity}
 \label{sec:wall_damping}
 
-The turbulent viscosity $\nu_{\rm t} = \mu_{\rm t}/\rho$ may be thought of as a ``mixing length'' squared divided by a time scale.  For example, in the Smagorinsky model the mixing length is $\ell_{\rm mix} = C_{\rm s} \,\Delta$ and the time scale is the inverse of the strain rate invariant $1/|S|$.  Thus, the turbulent kinematic viscosity has units of length$^2$/time.
+An alternative to the WALE model is to use Van Driest damping\footnote{Van Driest damping was the default wall model in FDS Version 6}. The turbulent viscosity $\nu_{\rm t} = \mu_{\rm t}/\rho$ may be thought of as a ``mixing length'' squared divided by a time scale.  For example, in the Smagorinsky model the mixing length is $\ell_{\rm mix} = C_{\rm s} \,\Delta$ and the time scale is the inverse of the strain rate invariant $1/|S|$.  Thus, the turbulent kinematic viscosity has units of length$^2$/time.
 
 To achieve the correct decay of the Reynolds stresses near a wall, Van Driest~\cite{Wilcox:1} proposed the following modification:
 \begin{equation}
@@ -669,11 +675,6 @@ where $A$ is a dimensionless empirical constant equal to 26.  The term in bracke
    \nu_{\rm t} = \ell_{\rm mix}^{\,2}\,|S|  \label{eqn_nearwall_viscosity}
 \end{equation}
 where the strain rate, $|S|$, is defined in Eq.~(\ref{constant_coef_LES}).
-
-\subsection{Alternate Near-Wall Eddy Viscosity Model}
-\label{sec:wall_wale_model}
-
-The WALE model (see Sec.~\ref{sec:wale}) is also available as a near-wall eddy viscosity model.  In fact, this is WALE's main purpose.  With the WALE model the eddy viscosity goes to zero at the correct rate, $\nu_t = O(y^3)$, without the need for an explicit damping function.
 
 \subsection{Open Boundaries (General, Wind)}
 \label{sec:opentang}

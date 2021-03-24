@@ -2,10 +2,11 @@
 
 MODULE PRECISION_PARAMETERS
 
-IMPLICIT NONE
+IMPLICIT NONE (TYPE,EXTERNAL)
 
 INTEGER, PARAMETER :: FB = SELECTED_REAL_KIND(6)     !< Precision of "Four Byte" reals
 INTEGER, PARAMETER :: EB = SELECTED_REAL_KIND(12)    !< Precision of "Eight Byte" reals
+INTEGER, PARAMETER :: MAX_LPC=20                     !< Maximum number of declared particle classes
 INTEGER, PARAMETER :: MAX_SPECIES=20                 !< Maximum number of declared species
 INTEGER, PARAMETER :: MAX_LAYERS=20                  !< Maximum number of solid material layers
 INTEGER, PARAMETER :: MAX_MATERIALS=20               !< Maximum number of solid material components
@@ -28,8 +29,8 @@ INTEGER, PARAMETER :: N_OUTPUT_QUANTITIES=550        !< Dimension of array that 
 
 REAL(EB), PARAMETER :: ALMOST_ONE=1._EB-EPSILON(1._EB)     !< Largest number that is < 1 in 8 byte accuracy
 REAL(EB), PARAMETER :: MICRON=1.E-6_EB                     !< A relatively small length (m)
-REAL(EB), PARAMETER :: TWO_EPSILON_EB=2._EB*EPSILON(1._EB) !< A very small number 8 byte accruracy
-REAL(FB), PARAMETER :: TWO_EPSILON_FB=2._EB*EPSILON(1._FB) !< A very small number 4 byte accruracy
+REAL(EB), PARAMETER :: TWO_EPSILON_EB=2._EB*EPSILON(1._EB) !< A very small number 8 byte accuracy
+REAL(FB), PARAMETER :: TWO_EPSILON_FB=2._EB*EPSILON(1._FB) !< A very small number 4 byte accuracy
 REAL(EB), PARAMETER :: TINY_EB=TINY(1._EB)                 !< The smallest resolvable 8 byte real number
 REAL(EB), PARAMETER :: HUGE_EB=HUGE(1._EB)                 !< The largest resolvable 8 btye real number
 
