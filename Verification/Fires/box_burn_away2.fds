@@ -26,9 +26,8 @@ The gas species here is additional SPEC.
 &SURF ID                   = 'FOAM SLAB'
       COLOR                = 'TOMATO 3'
       MATL_ID              = 'FOAM'
-      THICKNESS            = 0.1
-      BURN_AWAY            = .TRUE.
-      BACKING              = 'EXPOSED' /
+      VARIABLE_THICKNESS   = T
+      BURN_AWAY            = T /
 
 &DUMP SMOKE3D = .FALSE. 
       DT_HRR = 0.01
@@ -54,8 +53,8 @@ The gas species here is additional SPEC.
 &SLCF PBY=0.5, QUANTITY='VOLUME FRACTION', SPEC_ID = 'GAS'/
 
 &DEVC 	XB = 0,1,0,1,0,1, QUANTITY = 'DENSITY', SPEC_ID = 'GAS', 
-	STATISTICS = 'VOLUME INTEGRAL' ID = 'Mass GAS'/
-&DEVC XB = 0,1,0,1,0,1, QUANTITY = 'HRR' ID = 'HRR' /
+	SPATIAL_STATISTIC='VOLUME INTEGRAL' ID = 'Mass GAS'/
+&DEVC XB = 0,1,0,1,0,1, QUANTITY = 'HRRPUV', SPATIAL_STATISTIC='VOLUME INTEGRAL', ID = 'HRR' /
 
 &TAIL /
 

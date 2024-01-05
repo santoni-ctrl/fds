@@ -1,15 +1,22 @@
 # Makefile for Fire Dynamics Simulator (FDS)
 
 # To use this makefile, select the appropriate compiler and OS from the list below. For example, to
-# compile the 64 bit parallel version (MPI) of FDS under Linux using the Intel compilers type:
+# compile the parallel version (MPI) of FDS under Linux using the Intel compilers type:
 #
-# make mpi_intel_linux_64
+# make impi_intel_linux
 
 # A make utility for windows may be downloaded from http://gnuwin32.sourceforge.net/packages/make.htm
 
 # The variable VPATH defines where the source code is relative to the current directory
 
 VPATH = ../Source
+
+# set compiler type
+
+I_IFORT=ifort
+ifdef INTEL_IFORT
+   I_IFORT=$(INTEL_IFORT)
+endif
 
 ifeq ($(shell echo "check_quotes"),"check_quotes")
 # windows
@@ -21,7 +28,7 @@ ifeq ($(shell echo "check_quotes"),"check_quotes")
 else
 # linux/osx
   SHELL:=/bin/bash
-  GIT_HASH := $(shell git describe --long)
+  GIT_HASH := $(shell git describe --long --abbrev=7)
   ifeq ("$(shell git diff --shortstat $(VPATH)/*.f90)","")
     GIT_STAT :=
   else
@@ -33,6 +40,8 @@ else
 # The preprocessor used by xlf uses comma as separation between preprocessing commands.
 # Commas needs to be escaped if they are to be used as part of a value in a preprocessing variable.
   BUILD_DATE_XLF := $(shell date "+%b %d\, %Y  %T")
+# For OSX get CLT version:
+  CLT_VERSION := $(shell ../Scripts/osx_clt.sh)  
 endif
 
 GITINFO_BASE=-DGITHASH_PP=\"$(GIT_HASH)$(GIT_STAT)-$(GIT_BRANCH)\" -DGITDATE_PP=\""$(GIT_DATE)\""
@@ -44,12 +53,11 @@ GFORTRAN_OPTIONS=
 
 ifeq ($(shell echo "check_quotes"),"check_quotes")
 # windows
-  INTELMPI_COMPVERSION := $(shell ..\Scripts\intel_compversion)
+  INTELMPI_COMPVERSION := $(shell ..\Scripts\intel_compversion $(INTEL_IFORT))
   GNU_COMPVERSION := $(shell ..\Scripts\gnu_compversion)
 else
 # linux/osx
-  INTELMPI_COMPVERSION := $(shell ../Scripts/intelmpi_compversion.sh)
-  INTELMAJOR_COMPVERSION := $(shell ../Scripts/intelmajor_compversion.sh)
+  INTELMPI_COMPVERSION := $(shell ../Scripts/intelmpi_compversion.sh $(INTEL_IFORT))
   OPENMPI_COMPVERSION := $(shell ../Scripts/openmpi_compversion.sh)
   GNU_COMPVERSION := $(shell ../Scripts/gnu_compversion.sh)
   ifeq ($(shell ../Scripts/gnu_compmajorversion.sh),10)
@@ -70,17 +78,21 @@ LFLAGSMKL_CUSTOM =
 ifdef MKLROOT # This assumes the MKL library is available.
 ifeq ($(shell echo "check_quotes"),"check_quotes")
 # windows
+# mkl libraries has changed location in Intel oneAPI version 2024 and later
+# MKLLIBDIR location is defined in havemkl.bat script
 ifeq ($(shell ..\Scripts\havemkl),1)
 # Use cluster_sparse_solver with intelmpi blacs
   FFLAGSMKL_INTEL = -DWITH_MKL /I"$(MKLROOT)"\include
-  LFLAGSMKL_INTEL = "$(MKLROOT)"\lib\intel64\mkl_intel_lp64.lib "$(MKLROOT)"\lib\intel64\mkl_intel_thread.lib "$(MKLROOT)"\lib\intel64\mkl_core.lib "$(MKLROOT)"\lib\intel64\mkl_blacs_intelmpi_lp64.lib
+  LFLAGSMKL_INTEL = "$(MKLLIBDIR)"\mkl_intel_lp64.lib "$(MKLLIBDIR)"\mkl_sequential.lib "$(MKLLIBDIR)"\mkl_core.lib "$(MKLLIBDIR)"\mkl_blacs_intelmpi_lp64.lib
+  LFLAGSMKL_INTEL_OPENMP = "$(MKLLIBDIR)"\mkl_intel_lp64.lib "$(MKLLIBDIR)"\mkl_intel_thread.lib "$(MKLLIBDIR)"\mkl_core.lib "$(MKLLIBDIR)"\mkl_blacs_intelmpi_lp64.lib
 endif
 else
-# linux/osx
+# linux
 ifneq ("$(wildcard ${MKLROOT}/lib/intel64/libmkl_blacs_intelmpi_lp64.a)","")
 # Use cluster_sparse_solver with intelmpi blacs
-  FFLAGSMKL_INTEL = -DWITH_MKL -I$(MKLROOT)/include
-  LFLAGSMKL_INTEL = -Wl,--start-group ${MKLROOT}/lib/intel64/libmkl_intel_lp64.a ${MKLROOT}/lib/intel64/libmkl_core.a ${MKLROOT}/lib/intel64/libmkl_intel_thread.a ${MKLROOT}/lib/intel64/libmkl_blacs_intelmpi_lp64.a -Wl,--end-group -lpthread -lm -ldl
+  FFLAGSMKL_INTEL = -DWITH_MKL -I"${MKLROOT}/include"
+  LFLAGSMKL_INTEL = -Wl,--start-group ${MKLROOT}/lib/intel64/libmkl_intel_lp64.a ${MKLROOT}/lib/intel64/libmkl_sequential.a ${MKLROOT}/lib/intel64/libmkl_core.a ${MKLROOT}/lib/intel64/libmkl_blacs_intelmpi_lp64.a -Wl,--end-group -lpthread -lm -ldl
+  LFLAGSMKL_INTEL_OPENMP = -Wl,--start-group ${MKLROOT}/lib/intel64/libmkl_intel_lp64.a ${MKLROOT}/lib/intel64/libmkl_intel_thread.a ${MKLROOT}/lib/intel64/libmkl_core.a ${MKLROOT}/lib/intel64/libmkl_blacs_intelmpi_lp64.a -Wl,--end-group -liomp5 -lpthread -lm -ldl
 endif
 ifneq ("$(wildcard ${MKLROOT}/lib/intel64/libmkl_blacs_openmpi_lp64.a)","")
 # Use cluster_sparse_solver with openmpi blacs
@@ -93,7 +105,9 @@ ifneq ("$(wildcard ${MKLROOT}/lib/libmkl_blacs_custom_lp64.a)","")
 # Use cluster_sparse_solver with custom blacs
   FFLAGSMKL_CUSTOM = -DWITH_MKL -I$(MKLROOT)/include
 # MKL_LIBS needs to occur 3 times in order to avoid unresolved external reference warnings
-  MKL_LIBS = ${MKLROOT}/lib/libmkl_intel_lp64.a ${MKLROOT}/lib/libmkl_core.a ${MKLROOT}/lib/libmkl_intel_thread.a ${MKLROOT}/lib/libmkl_blacs_custom_lp64.a
+  MKL_LIBS_OPENMP = ${MKLROOT}/lib/libmkl_intel_lp64.a ${MKLROOT}/lib/libmkl_core.a ${MKLROOT}/lib/libmkl_intel_thread.a ${MKLROOT}/lib/libmkl_blacs_custom_lp64.a
+  MKL_LIBS = ${MKLROOT}/lib/libmkl_intel_lp64.a ${MKLROOT}/lib/libmkl_core.a ${MKLROOT}/lib/libmkl_sequential.a ${MKLROOT}/lib/libmkl_blacs_custom_lp64.a
+  LFLAGSMKL_CUSTOM_OPENMP = ${MKL_LIBS_OPENMP} ${MKL_LIBS_OPENMP} ${MKL_LIBS_OPENMP} -lpthread -lm -ldl
   LFLAGSMKL_CUSTOM = ${MKL_LIBS} ${MKL_LIBS} ${MKL_LIBS} -lpthread -lm -ldl
   FFLAGSMKL_GNU_CUSTOM = -DWITH_MKL -I$(MKLROOT)/include
   LFLAGSMKL_GNU_CUSTOM =  ${MKLROOT}/lib/libmkl_intel_lp64.a ${MKLROOT}/lib/libmkl_sequential.a ${MKLROOT}/lib/libmkl_core.a ${MKLROOT}/lib/libmkl_blacs_custom_lp64.a -lpthread -lm -ldl
@@ -101,9 +115,9 @@ endif
 endif # OS test
 endif # MKLROOT test
 
-obj_mpi = prec.o cons.o devc.o type.o data.o mesh.o func.o gsmv.o smvv.o rcal.o turb.o soot.o \
-          ieva.o pois.o scrc.o evac.o geom.o ccib.o radi.o part.o vege.o ctrl.o samr.o dump.o hvac.o mass.o \
-          read.o wall.o fire.o divg.o velo.o pres.o init.o main.o
+obj_mpi = prec.o cons.o prop.o devc.o type.o data.o mesh.o func.o gsmv.o smvv.o rcal.o turb.o soot.o \
+          pois.o geom.o ccib.o radi.o part.o vege.o ctrl.o hvac.o mass.o \
+          wall.o fire.o velo.o pres.o init.o dump.o read.o divg.o main.o
 
 objwin_mpi = $(obj_mpi:.o=.obj)
 
@@ -148,275 +162,278 @@ velo.obj: FFLAGS += $(FOPENMPFLAGS)
 radi.obj: FFLAGS += $(FOPENMPFLAGS)
 main.obj: FFLAGS += $(FOPENMPFLAGS)
 
-# Windows Intel Compiler
+# Windows Intel Fortran Compiler and Intel MPI
+#*** Note: the script, Build\Scripts\setup_intel_compilers.bat, must be run before running make with this target
 
-#*** note: the following scripts (located in ..\Scripts directory) must be run before running make with this target
-#    ..\Scripts\ifortvars intel64
+impi_intel_win : MPILIB = "$(IMPI_RELEASE_ROOT)\impi.lib"
+impi_intel_win : MPIINCLUDE = "$(I_MPI_ROOT)\include\mpi"
+impi_intel_win : FFLAGS = /Qipo /O2 /I$(MPIINCLUDE) /wrap-margin- $(GITINFO) $(INTELMPI_COMPINFO) $(FFLAGSMKL_INTEL)
+impi_intel_win : FCOMPL = $(I_IFORT)
+impi_intel_win : obj = fds_impi_intel_win
+impi_intel_win : setup_win $(objwin_mpi)
+	$(FCOMPL) -o $(obj) $(FFLAGS) /F1000000000 $(objwin_mpi) $(MPILIB) $(LFLAGSMKL_INTEL)
 
-impi_intel_win_64 : MPILIB = "$(IMPI_RELEASE_ROOT)\impi.lib"
-impi_intel_win_64 : MPIINCLUDE = "$(IMPI_INCLUDE)"
-impi_intel_win_64 : FFLAGS = /Qipo /O2 /I$(MPIINCLUDE) /traceback /debug:full /wrap-margin- $(GITINFO) $(INTELMPI_COMPINFO) $(FFLAGSMKL_INTEL)
-impi_intel_win_64 : FOPENMPFLAGS = /Qopenmp
-impi_intel_win_64 : FCOMPL = ifort
-impi_intel_win_64 : obj = fds_impi_win_64
-impi_intel_win_64 : setup_win $(objwin_mpi)
-	$(FCOMPL) -o $(obj) $(FFLAGS) $(FOPENMPFLAGS) /F1000000000 $(objwin_mpi) $(MPILIB) $(LFLAGSMKL_INTEL)
+impi_intel_win_vt : MPILIB = "$(IMPI_RELEASE_ROOT)\impi.lib"
+impi_intel_win_vt : MPIINCLUDE = "$(I_MPI_ROOT)\include\mpi"
+impi_intel_win_vt : FFLAGS = /Qipo /O2 /I$(MPIINCLUDE) /wrap-margin- $(GITINFO) $(INTELMPI_COMPINFO) $(FFLAGSMKL_INTEL) /Zi /D "TBB_USE_THREADING_TOOLS"
+impi_intel_win_vt : FCOMPL = $(I_IFORT)
+impi_intel_win_vt : obj = fds_impi_intel_win_vt
+impi_intel_win_vt : setup_win $(objwin_mpi)
+	$(FCOMPL) -o $(obj) $(FFLAGS) /F1000000000 $(objwin_mpi) $(MPILIB) $(LFLAGSMKL_INTEL)
 
-impi_intel_win_64_dv : MPILIB = "$(IMPI_RELEASE_ROOT)\impi.lib"
-impi_intel_win_64_dv : MPIINCLUDE = "$(IMPI_INCLUDE)"
-impi_intel_win_64_dv : FFLAGS = /O1 /I$(MPIINCLUDE) /traceback /debug:full /wrap-margin- $(GITINFO) $(INTELMPI_COMPINFO) $(FFLAGSMKL_INTEL)
-impi_intel_win_64_dv : FOPENMPFLAGS = /Qopenmp
-impi_intel_win_64_dv : FCOMPL = ifort
-impi_intel_win_64_dv : obj = fds_impi_win_64_dv
-impi_intel_win_64_dv : setup_win $(objwin_mpi)
-	$(FCOMPL) -o $(obj) $(FFLAGS) $(FOPENMPFLAGS) /F1000000000 $(objwin_mpi) $(MPILIB) $(LFLAGSMKL_INTEL)
 
-impi_intel_win_64_db : MPILIB = "$(IMPI_DEBUG_ROOT)\impi.lib"
-impi_intel_win_64_db : MPIINCLUDE = "$(IMPI_INCLUDE)"
-impi_intel_win_64_db : FFLAGS = /Od /nologo /debug:all /I$(MPIINCLUDE) /Z7 /extend-source:132 /warn:unused /warn:nointerfaces /Qtrapuv /fp:strict /fp:except /traceback /check:all /stand:f18 /wrap-margin- $(GITINFO) $(INTELMPI_COMPINFO) $(FFLAGSMKL_INTEL)
-impi_intel_win_64_db : FOPENMPFLAGS = /Qopenmp
-impi_intel_win_64_db : FCOMPL = ifort
-impi_intel_win_64_db : obj = fds_impi_win_64_db
-impi_intel_win_64_db : setup_win $(objwin_mpi)
-	$(FCOMPL) -o $(obj) $(FFLAGS) $(FOPENMPFLAGS) /F1000000000 $(objwin_mpi) $(MPILIB) $(LFLAGSMKL_INTEL)
+impi_intel_win_openmp : MPILIB = "$(IMPI_RELEASE_ROOT)\impi.lib"
+impi_intel_win_openmp : MPIINCLUDE = "$(I_MPI_ROOT)\include\mpi"
+impi_intel_win_openmp : FFLAGS = /Qipo /O2 /I$(MPIINCLUDE) /wrap-margin- $(GITINFO) $(INTELMPI_COMPINFO) $(FFLAGSMKL_INTEL)
+impi_intel_win_openmp : FOPENMPFLAGS = /Qopenmp
+impi_intel_win_openmp : FCOMPL = $(I_IFORT)
+impi_intel_win_openmp : obj = fds_impi_intel_win_openmp
+impi_intel_win_openmp : setup_win $(objwin_mpi)
+	$(FCOMPL) -o $(obj) $(FFLAGS) $(FOPENMPFLAGS) /F1000000000 $(objwin_mpi) $(MPILIB) $(LFLAGSMKL_INTEL_OPENMP)
 
-# Intel Compiler for Linux
-impi_intel_linux_64 : FFLAGS = -m64 -O2 -ipo -g -traceback -no-wrap-margin $(GITINFO) $(INTELMPI_COMPINFO) $(FFLAGSMKL_INTEL)
-impi_intel_linux_64 : LFLAGSMKL = $(LFLAGSMKL_INTEL)
-impi_intel_linux_64 : LFLAGS =
-impi_intel_linux_64 : FCOMPL = mpiifort
-impi_intel_linux_64 : FOPENMPFLAGS = -qopenmp
-impi_intel_linux_64 : obj = fds_impi_intel_linux_64
-impi_intel_linux_64 : setup $(obj_mpi)
+impi_intel_win_dv : MPILIB = "$(IMPI_RELEASE_ROOT)\impi.lib"
+impi_intel_win_dv : MPIINCLUDE = "$(I_MPI_ROOT)\include\mpi"
+impi_intel_win_dv : FFLAGS = /O1 /I$(MPIINCLUDE) /Z7 /traceback /debug:full /wrap-margin- $(GITINFO) $(INTELMPI_COMPINFO) $(FFLAGSMKL_INTEL)
+impi_intel_win_dv : FCOMPL = $(I_IFORT)
+impi_intel_win_dv : obj = fds_impi_intel_win_dv
+impi_intel_win_dv : setup_win $(objwin_mpi)
+	$(FCOMPL) -o $(obj) $(FFLAGS) /F1000000000 $(objwin_mpi) $(MPILIB) $(LFLAGSMKL_INTEL)
+
+impi_intel_win_openmp_dv : MPILIB = "$(IMPI_RELEASE_ROOT)\impi.lib"
+impi_intel_win_openmp_dv : MPIINCLUDE = "$(I_MPI_ROOT)\include\mpi"
+impi_intel_win_openmp_dv : FFLAGS = /O1 /I$(MPIINCLUDE) /Z7 /traceback /debug:full /wrap-margin- $(GITINFO) $(INTELMPI_COMPINFO) $(FFLAGSMKL_INTEL)
+impi_intel_win_openmp_dv : FOPENMPFLAGS = /Qopenmp
+impi_intel_win_openmp_dv : FCOMPL = $(I_IFORT)
+impi_intel_win_openmp_dv : obj = fds_impi_intel_win_openmp_dv
+impi_intel_win_openmp_dv : setup_win $(objwin_mpi)
+	$(FCOMPL) -o $(obj) $(FFLAGS) $(FOPENMPFLAGS) /F1000000000 $(objwin_mpi) $(MPILIB) $(LFLAGSMKL_INTEL_OPENMP)
+
+impi_intel_win_db : MPILIB = "$(IMPI_DEBUG_ROOT)\impi.lib"
+impi_intel_win_db : MPIINCLUDE = "$(I_MPI_ROOT)\include\mpi"
+impi_intel_win_db : FFLAGS = /Od /nologo /debug:all /I$(MPIINCLUDE) /Z7 /extend-source:132 /warn:unused /warn:nointerfaces /Qtrapuv /fp:strict /fp:except /traceback /check:all /stand:f18 /wrap-margin- $(GITINFO) $(INTELMPI_COMPINFO) $(FFLAGSMKL_INTEL)
+impi_intel_win_db : FCOMPL = $(I_IFORT)
+impi_intel_win_db : obj = fds_impi_intel_win_db
+impi_intel_win_db : setup_win $(objwin_mpi)
+	$(FCOMPL) -o $(obj) $(FFLAGS) /F1000000000 $(objwin_mpi) $(MPILIB) $(LFLAGSMKL_INTEL)
+
+impi_intel_win_openmp_db : MPILIB = "$(IMPI_DEBUG_ROOT)\impi.lib"
+impi_intel_win_openmp_db : MPIINCLUDE = "$(I_MPI_ROOT)\include\mpi"
+impi_intel_win_openmp_db : FFLAGS = /Od /nologo /debug:all /I$(MPIINCLUDE) /Z7 /extend-source:132 /warn:unused /warn:nointerfaces /Qtrapuv /fp:strict /fp:except /traceback /check:all /stand:f18 /wrap-margin- $(GITINFO) $(INTELMPI_COMPINFO) $(FFLAGSMKL_INTEL)
+impi_intel_win_openmp_db : FOPENMPFLAGS = /Qopenmp
+impi_intel_win_openmp_db : FCOMPL = $(I_IFORT)
+impi_intel_win_openmp_db : obj = fds_impi_intel_win_openmp_db
+impi_intel_win_openmp_db : setup_win $(objwin_mpi)
+	$(FCOMPL) -o $(obj) $(FFLAGS) $(FOPENMPFLAGS) /F1000000000 $(objwin_mpi) $(MPILIB) $(LFLAGSMKL_INTEL_OPENMP)
+
+# Linux Intel Fortran Compiler and Intel MPI
+
+impi_intel_linux : FFLAGS = -m64 -fc=$(I_IFORT) -O2 -ipo -no-wrap-margin $(GITINFO) $(INTELMPI_COMPINFO) $(FFLAGSMKL_INTEL) -DUSE_IFPORT
+impi_intel_linux : LFLAGSMKL = $(LFLAGSMKL_INTEL)
+impi_intel_linux : FCOMPL = mpiifort
+impi_intel_linux : obj = fds_impi_intel_linux
+impi_intel_linux : setup $(obj_mpi)
+	$(FCOMPL) $(FFLAGS) -o $(obj) $(obj_mpi) $(LFLAGSMKL)
+
+impi_intel_linux_openmp : FFLAGS = -m64 -fc=$(I_IFORT) -O2 -ipo -no-wrap-margin $(GITINFO) $(INTELMPI_COMPINFO) $(FFLAGSMKL_INTEL) -DUSE_IFPORT
+impi_intel_linux_openmp : LFLAGSMKL = $(LFLAGSMKL_INTEL_OPENMP)
+impi_intel_linux_openmp : FCOMPL = mpiifort
+impi_intel_linux_openmp : FOPENMPFLAGS = -qopenmp
+impi_intel_linux_openmp : obj = fds_impi_intel_linux_openmp
+impi_intel_linux_openmp : setup $(obj_mpi)
+	$(FCOMPL) $(FFLAGS) $(FOPENMPFLAGS) -o $(obj) $(obj_mpi) $(LFLAGSMKL)
+
+impi_intel_linux_db : FFLAGS = -m64 -fc=$(I_IFORT) -check all -warn all -diag-error=remark,warn,error -O0 -g -traceback -fpe0 -nofltconsistency -stand:f18 -no-wrap-margin $(GITINFO) $(INTELMPI_COMPINFO) $(FFLAGSMKL_INTEL) -DUSE_IFPORT
+impi_intel_linux_db : LFLAGSMKL = $(LFLAGSMKL_INTEL)
+impi_intel_linux_db : FCOMPL = mpiifort
+impi_intel_linux_db : obj = fds_impi_intel_linux_db
+impi_intel_linux_db : setup $(obj_mpi)
+	$(FCOMPL) $(FFLAGS) -o $(obj) $(obj_mpi) $(LFLAGSMKL)
+
+impi_intel_linux_openmp_db : FFLAGS = -m64 -fc=$(I_IFORT) -check all -warn all -diag-error=remark,warn,error -O0 -g -traceback -fpe0 -nofltconsistency -stand:f18 -no-wrap-margin $(GITINFO) $(INTELMPI_COMPINFO) $(FFLAGSMKL_INTEL) -DUSE_IFPORT
+impi_intel_linux_openmp_db : LFLAGSMKL = $(LFLAGSMKL_INTEL_OPENMP)
+impi_intel_linux_openmp_db : FCOMPL = mpiifort
+impi_intel_linux_openmp_db : FOPENMPFLAGS = -qopenmp
+impi_intel_linux_openmp_db : obj = fds_impi_intel_linux_openmp_db
+impi_intel_linux_openmp_db : setup $(obj_mpi)
+	$(FCOMPL) $(FFLAGS) $(FOPENMPFLAGS) -o $(obj) $(obj_mpi) $(LFLAGSMKL)
+
+impi_intel_linux_dv : FFLAGS = -m64 -fc=$(I_IFORT) -warn unused -O1 -g -traceback -no-wrap-margin $(GITINFO) $(INTELMPI_COMPINFO) $(FFLAGSMKL_INTEL) -DUSE_IFPORT
+impi_intel_linux_dv : LFLAGSMKL = $(LFLAGSMKL_INTEL)
+impi_intel_linux_dv : FCOMPL = mpiifort
+impi_intel_linux_dv : obj = fds_impi_intel_linux_dv
+impi_intel_linux_dv : setup $(obj_mpi)
+	$(FCOMPL) $(FFLAGS) -o $(obj) $(obj_mpi) $(LFLAGSMKL)
+
+impi_intel_linux_openmp_dv : FFLAGS = -m64 -fc=$(I_IFORT) -warn unused -O1 -g -traceback -no-wrap-margin $(GITINFO) $(INTELMPI_COMPINFO) $(FFLAGSMKL_INTEL) -DUSE_IFPORT
+impi_intel_linux_openmp_dv : LFLAGSMKL = $(LFLAGSMKL_INTEL_OPENMP)
+impi_intel_linux_openmp_dv : FCOMPL = mpiifort
+impi_intel_linux_openmp_dv : FOPENMPFLAGS = -qopenmp
+impi_intel_linux_openmp_dv : obj = fds_impi_intel_linux_openmp_dv
+impi_intel_linux_openmp_dv : setup $(obj_mpi)
+	$(FCOMPL) $(FFLAGS) $(FOPENMPFLAGS) -o $(obj) $(obj_mpi) $(LFLAGSMKL)
+
+# OSX Intel Fortran and Open MPI
+
+ompi_intel_osx : FFLAGS = -m64 -O2 -stand:f18 -no-wrap-margin $(GITINFO) $(OPENMPI_COMPINFO) $(FFLAGSMKL_CUSTOM)
+ompi_intel_osx : LFLAGSMKL = $(LFLAGSMKL_CUSTOM) $(CLT_VERSION)
+ompi_intel_osx : LFLAGS = -static-intel
+ompi_intel_osx : FCOMPL = mpifort
+ompi_intel_osx : obj = fds_ompi_intel_osx
+ompi_intel_osx : setup $(obj_mpi)
+	$(FCOMPL) $(FFLAGS) $(LFLAGS) -o $(obj) $(obj_mpi) $(LFLAGSMKL)
+
+ompi_intel_osx_openmp : FFLAGS = -m64 -O2 -stand:f18 -no-wrap-margin $(GITINFO) $(OPENMPI_COMPINFO) $(FFLAGSMKL_CUSTOM)
+ompi_intel_osx_openmp : LFLAGSMKL = $(LFLAGSMKL_CUSTOM_OPENMP) $(CLT_VERSION)
+ompi_intel_osx_openmp : LFLAGS = -static-intel
+ompi_intel_osx_openmp : FOPENMPFLAGS = -qopenmp -qopenmp-link static
+ompi_intel_osx_openmp : FCOMPL = mpifort
+ompi_intel_osx_openmp : obj = fds_ompi_intel_osx_openmp
+ompi_intel_osx_openmp : setup $(obj_mpi)
 	$(FCOMPL) $(FFLAGS) $(LFLAGS) $(FOPENMPFLAGS) -o $(obj) $(obj_mpi) $(LFLAGSMKL)
 
-impi_intel_linux_64_db : FFLAGS = -m64 -check all -warn all -O0 -g -traceback -fpe0 -fltconsistency -stand:f18 -no-wrap-margin $(GITINFO) $(INTELMPI_COMPINFO) $(FFLAGSMKL_INTEL)
-impi_intel_linux_64_db : LFLAGSMKL = $(LFLAGSMKL_INTEL)
-impi_intel_linux_64_db : LFLAGS =
-impi_intel_linux_64_db : FCOMPL = mpiifort
-impi_intel_linux_64_db : FOPENMPFLAGS = -qopenmp
-impi_intel_linux_64_db : obj = fds_impi_intel_linux_64_db
-impi_intel_linux_64_db : setup $(obj_mpi)
+ompi_intel_osx_db : FFLAGS = -m64 -check all -fp-stack-check -warn unused -O0 -auto -WB -g -traceback -fpe0 -nofltconsistency -stand:f18 -no-wrap-margin $(GITINFO) $(OPENMPI_COMPINFO) $(FFLAGSMKL_CUSTOM)
+ompi_intel_osx_db : LFLAGSMKL = $(LFLAGSMKL_CUSTOM) $(CLT_VERSION)
+ompi_intel_osx_db : LFLAGS = -static-intel
+ompi_intel_osx_db : FCOMPL = mpifort
+ompi_intel_osx_db : obj = fds_ompi_intel_osx_db
+ompi_intel_osx_db : setup $(obj_mpi)
+	$(FCOMPL) $(FFLAGS) $(LFLAGS) -o $(obj) $(obj_mpi) $(LFLAGSMKL)
+
+ompi_intel_osx_openmp_db : FFLAGS = -m64 -check all -fp-stack-check -warn unused -O0 -auto -WB -g -traceback -fpe0 -nofltconsistency -stand:f18 -no-wrap-margin $(GITINFO) $(OPENMPI_COMPINFO) $(FFLAGSMKL_CUSTOM)
+ompi_intel_osx_openmp_db : LFLAGSMKL = $(LFLAGSMKL_CUSTOM_OPENMP) $(CLT_VERSION)
+ompi_intel_osx_openmp_db : LFLAGS = -static-intel
+ompi_intel_osx_openmp_db : FOPENMPFLAGS = -qopenmp -qopenmp-link static
+ompi_intel_osx_openmp_db : FCOMPL = mpifort
+ompi_intel_osx_openmp_db : obj = fds_ompi_intel_osx_openmp_db
+ompi_intel_osx_openmp_db : setup $(obj_mpi)
 	$(FCOMPL) $(FFLAGS) $(LFLAGS) $(FOPENMPFLAGS) -o $(obj) $(obj_mpi) $(LFLAGSMKL)
 
-impi_intel_linux_64_dv : FFLAGS = -m64 -warn unused -O1 -g -traceback -no-wrap-margin $(GITINFO) $(INTELMPI_COMPINFO) $(FFLAGSMKL_INTEL)
-impi_intel_linux_64_dv : LFLAGSMKL = $(LFLAGSMKL_INTEL)
-impi_intel_linux_64_dv : LFLAGS =
-impi_intel_linux_64_dv : FCOMPL = mpiifort
-impi_intel_linux_64_dv : FOPENMPFLAGS = -qopenmp
-impi_intel_linux_64_dv : obj = fds_impi_intel_linux_64_dv
-impi_intel_linux_64_dv : setup $(obj_mpi)
+ompi_intel_osx_dv : FFLAGS = -m64 -warn unused -O1 -g -traceback -stand:f18 -no-wrap-margin  $(GITINFO) $(OPENMPI_COMPINFO) $(FFLAGSMKL_CUSTOM)
+ompi_intel_osx_dv : LFLAGSMKL = $(LFLAGSMKL_CUSTOM) $(CLT_VERSION)
+ompi_intel_osx_dv : LFLAGS = -static-intel
+ompi_intel_osx_dv : FCOMPL = mpifort
+ompi_intel_osx_dv : obj = fds_ompi_intel_osx_dv
+ompi_intel_osx_dv : setup $(obj_mpi)
+	$(FCOMPL) $(FFLAGS) $(LFLAGS) -o $(obj) $(obj_mpi) $(LFLAGSMKL)
+
+ompi_intel_osx_openmp_dv : FFLAGS = -m64 -warn unused -O1 -g -traceback -stand:f18 -no-wrap-margin  $(GITINFO) $(OPENMPI_COMPINFO) $(FFLAGSMKL_CUSTOM)
+ompi_intel_osx_openmp_dv : LFLAGSMKL = $(LFLAGSMKL_CUSTOM_OPENMP) $(CLT_VERSION)
+ompi_intel_osx_openmp_dv : LFLAGS = -static-intel
+ompi_intel_osx_openmp_dv : FOPENMPFLAGS = -qopenmp -qopenmp-link static
+ompi_intel_osx_openmp_dv : FCOMPL = mpifort
+ompi_intel_osx_openmp_dv : obj = fds_ompi_intel_osx_openmp_dv
+ompi_intel_osx_openmp_dv : setup $(obj_mpi)
 	$(FCOMPL) $(FFLAGS) $(LFLAGS) $(FOPENMPFLAGS) -o $(obj) $(obj_mpi) $(LFLAGSMKL)
-
-mpi_intel_linux_64 : FFLAGS = -m64 -O2 -ipo -g -traceback -no-wrap-margin $(GITINFO) $(OPENMPI_COMPINFO) $(FFLAGSMKL_OPENMPI)
-mpi_intel_linux_64 : LFLAGSMKL = $(LFLAGSMKL_OPENMPI)
-mpi_intel_linux_64 : LFLAGS =
-mpi_intel_linux_64 : FCOMPL = mpifort
-mpi_intel_linux_64 : FOPENMPFLAGS = -qopenmp
-mpi_intel_linux_64 : obj = fds_mpi_intel_linux_64
-mpi_intel_linux_64 : setup $(obj_mpi)
-	$(FCOMPL) $(FFLAGS) $(LFLAGS) $(FOPENMPFLAGS) -o $(obj) $(obj_mpi) $(LFLAGSMKL)
-
-mpi_intel_linux_64_dv : FFLAGS = -m64 -warn unused -O1 -g -traceback -no-wrap-margin $(GITINFO) $(OPENMPI_COMPINFO) $(FFLAGSMKL_OPENMPI)
-mpi_intel_linux_64_dv : LFLAGSMKL = $(LFLAGSMKL_OPENMPI)
-mpi_intel_linux_64_dv : LFLAGS =
-mpi_intel_linux_64_dv : FCOMPL = mpifort
-mpi_intel_linux_64_dv : FOPENMPFLAGS = -qopenmp
-mpi_intel_linux_64_dv : obj = fds_mpi_intel_linux_64_dv
-mpi_intel_linux_64_dv : setup $(obj_mpi)
-	$(FCOMPL) $(FFLAGS) $(LFLAGS) $(FOPENMPFLAGS) -o $(obj) $(obj_mpi) $(LFLAGSMKL)
-
-mpi_intel_linux_64_db : FFLAGS = -m64 -check -warn all -O0 -auto -WB -g -traceback -fpe0 -fltconsistency -no-wrap-margin $(GITINFO) $(OPENMPI_COMPINFO) $(FFLAGSMKL_OPENMPI)
-mpi_intel_linux_64_db : LFLAGSMKL = $(LFLAGSMKL_OPENMPI)
-mpi_intel_linux_64_db : LFLAGS =
-mpi_intel_linux_64_db : FCOMPL = mpifort
-mpi_intel_linux_64_db : FOPENMPFLAGS = -qopenmp
-mpi_intel_linux_64_db : obj = fds_mpi_intel_linux_64_db
-mpi_intel_linux_64_db : setup $(obj_mpi)
-	$(FCOMPL) $(FFLAGS) $(LFLAGS) $(FOPENMPFLAGS) -o $(obj) $(obj_mpi) $(LFLAGSMKL)
-
-# OSX
-mpi_intel_osx_64 : FFLAGS = -m64 -O2 -ipo -stand:f18 -no-wrap-margin $(GITINFO) $(OPENMPI_COMPINFO) $(FFLAGSMKL_CUSTOM)
-mpi_intel_osx_64 : LFLAGSMKL = $(LFLAGSMKL_CUSTOM)
-mpi_intel_osx_64 : LFLAGS = -static-intel
-mpi_intel_osx_64 : FOPENMPFLAGS = -qopenmp -qopenmp-link static
-mpi_intel_osx_64 : FCOMPL = mpifort
-mpi_intel_osx_64 : obj = fds_mpi_intel_osx_64
-mpi_intel_osx_64 : setup $(obj_mpi)
-	$(FCOMPL) $(FFLAGS) $(LFLAGS) $(FOPENMPFLAGS) -o $(obj) $(obj_mpi) $(LFLAGSMKL)
-
-mpi_intel_osx_64_db : FFLAGS = -m64 -check all -fp-stack-check -warn unused -O0 -auto -WB -g -traceback -fpe0 -fltconsistency -stand:f18 -no-wrap-margin $(GITINFO) $(OPENMPI_COMPINFO) $(FFLAGSMKL_CUSTOM)
-mpi_intel_osx_64_db : LFLAGSMKL = $(LFLAGSMKL_CUSTOM)
-mpi_intel_osx_64_db : LFLAGS = -static-intel
-mpi_intel_osx_64_db : FOPENMPFLAGS = -qopenmp -qopenmp-link static
-mpi_intel_osx_64_db : FCOMPL = mpifort
-mpi_intel_osx_64_db : obj = fds_mpi_intel_osx_64_db
-mpi_intel_osx_64_db : setup $(obj_mpi)
-	$(FCOMPL) $(FFLAGS) $(LFLAGS) $(FOPENMPFLAGS) -o $(obj) $(obj_mpi) $(LFLAGSMKL)
-
-mpi_intel_osx_64_dv : FFLAGS = -m64 -warn unused -O1 -g -traceback -stand:f18 -no-wrap-margin  $(GITINFO) $(OPENMPI_COMPINFO) $(FFLAGSMKL_CUSTOM)
-mpi_intel_osx_64_dv : LFLAGSMKL = $(LFLAGSMKL_CUSTOM)
-mpi_intel_osx_64_dv : LFLAGS = -static-intel
-mpi_intel_osx_64_dv : FOPENMPFLAGS = -qopenmp -qopenmp-link static
-mpi_intel_osx_64_dv : FCOMPL = mpifort
-mpi_intel_osx_64_dv : obj = fds_mpi_intel_osx_64_dv
-mpi_intel_osx_64_dv : setup $(obj_mpi)
-	$(FCOMPL) $(FFLAGS) $(LFLAGS) $(FOPENMPFLAGS) -o $(obj) $(obj_mpi) $(LFLAGSMKL)
-
-lahey_linux_mpi : FFLAGS = -O --tpp --staticlink --nap --nchk --npca --nsav --ntrace
-lahey_linux_mpi : FCOMPL = hf77
-lahey_linux_mpi : INCLUDEDIR = /usr/local/include
-lahey_linux_mpi : obj = fds_mpi_lahey
-lahey_linux_mpi : $(obj_mpi)
-	$(FCOMPL) $(FFLAGS) -o $(obj) $(obj_mpi)
-
-f95_solaris10_mpi : INC_FLAGS = -I$(OPT)/SUNWhpc/HPC7.0/include/amd64
-f95_solaris10_mpi : LIB_FLAGS = -Bstatic -lfui -Bdynamic -L$(OPT)/SUNWspro/prod/lib/amd64 -L$(OPT)/SUNWhpc/HPC7.0/lib/amd64
-f95_solaris10_mpi : FFLAGS = -m64 $(INC_FLAGS)
-f95_solaris10_mpi : FCOMPL = mpif90
-f95_solaris10_mpi : obj = fds_mpi_solaris
-f95_solaris10_mpi : $(obj_mpi)
-	$(FCOMPL) $(FFLAGS) -o $(obj) $(obj_mpi)
-
-f95_solaris11_mpi : INC_FLAGS=-I/opt/SUNWhpc/HPC8.2/sun/include/amd64
-f95_solaris11_mpi : LIB_FLAGS=-Bstatic -L/usr/lib/amd64/ld.so.1 -L/opt/sunstudio12.1/lib/amd64 -L/opt/SUNWhpc/HPC8.2/sun/lib/amd64
-f95_solaris11_mpi : FFLAGS = -xarch=sse2a -m64 -xchip=native $(INC_FLAGS)
-f95_solaris11_mpi : FCOMPL = mpif90
-f95_solaris11_mpi : obj = fds_mpi_solaris11
-f95_solaris11_mpi : $(obj_mpi)
-	$(FCOMPL) $(FFLAGS) -o $(obj) $(obj_mpi)
-
-#*** Portland Group Compiler***
-
-# AMD Opteron 64Bit PC
-mpi_pgi_linux_64 : FFLAGS = -fast -tp k8-64 -Mstandard $(GITINFOPGI)
-mpi_pgi_linux_64 : FCOMPL = mpifort
-mpi_pgi_linux_64 : LFLAGS  = -fast -tp k8-64 -byteswapio -Bstatic -lc -lgcc_eh
-mpi_pgi_linux_64 : obj = fds_mpi_pgi_Opteron64
-mpi_pgi_linux_64 : $(obj_mpi)
-	$(FCOMPL) $(FFLAGS) -o $(obj) $(obj_mpi)
-
-#AIX, JUMP, MPI-Version
-mpi_xlf_aix : FFLAGS  = -O2 -q64 -qtune=auto -qarch=auto $(GITINFOXLF)
-mpi_xlf_aix : FCOMPL  = mpxlf90
-mpi_xlf_aix : obj     = fds_jump_mpi_64
-mpi_xlf_aix : $(obj_mpi)
-	$(FCOMPL) $(FFLAGS) -o $(obj) $(obj_mpi)
-
 
 #*** GNU Compilers ***
 
-mpi_gnu_linux_64 : FFLAGS = -m64 -O2 -std=f2008 -frecursive -ffpe-summary=none -fall-intrinsics $(GITINFOGNU) $(GNU_COMPINFO) $(FFLAGSMKL_GNU_OPENMPI) $(GFORTRAN_OPTIONS)
-mpi_gnu_linux_64 : LFLAGSMKL = $(LFLAGSMKL_GNU_OPENMPI)
-mpi_gnu_linux_64 : FCOMPL = mpifort
-mpi_gnu_linux_64 : FOPENMPFLAGS = -fopenmp
-mpi_gnu_linux_64 : obj = fds_mpi_gnu_linux_64
-mpi_gnu_linux_64 : setup $(obj_mpi)
+ompi_gnu_linux : FFLAGS = -m64 -O2 -std=f2018 -frecursive -ffpe-summary=none -fall-intrinsics $(GITINFOGNU) $(GNU_COMPINFO) $(FFLAGSMKL_GNU_OPENMPI) $(GFORTRAN_OPTIONS)
+ompi_gnu_linux : LFLAGSMKL = $(LFLAGSMKL_GNU_OPENMPI)
+ompi_gnu_linux : FCOMPL = mpifort
+ompi_gnu_linux : FOPENMPFLAGS = -fopenmp
+ompi_gnu_linux : obj = fds_ompi_gnu_linux
+ompi_gnu_linux : setup $(obj_mpi)
 	$(FCOMPL) $(FFLAGS) $(FOPENMPFLAGS) -o $(obj) $(obj_mpi) $(LFLAGSMKL)
 
-mpi_gnu_linux_64_db : FFLAGS = -m64 -O0 -std=f2008 -ggdb -Wall -Wcharacter-truncation -Wno-target-lifetime -fcheck=all -fbacktrace -ffpe-trap=invalid,zero,overflow -frecursive -ffpe-summary=none -fall-intrinsics $(GITINFOGNU) $(GNU_COMPINFO) $(FFLAGSMKL_GNU_OPENMPI) $(GFORTRAN_OPTIONS)
-mpi_gnu_linux_64_db : LFLAGSMKL = $(LFLAGSMKL_GNU_OPENMPI)
-mpi_gnu_linux_64_db : FCOMPL = mpifort
-mpi_gnu_linux_64_db : FOPENMPFLAGS = -fopenmp
-mpi_gnu_linux_64_db : obj = fds_mpi_gnu_linux_64_db
-mpi_gnu_linux_64_db : setup $(obj_mpi)
+ompi_gnu_linux_db : FFLAGS = -m64 -O0 -std=f2018 -ggdb -Wall -Werror -Wunused-parameter -Wcharacter-truncation -Wno-target-lifetime -fcheck=all -fbacktrace -ffpe-trap=invalid,zero,overflow -frecursive -ffpe-summary=none -fall-intrinsics -fbounds-check $(GITINFOGNU) $(GNU_COMPINFO) $(FFLAGSMKL_GNU_OPENMPI) $(GFORTRAN_OPTIONS)
+ompi_gnu_linux_db : LFLAGSMKL = $(LFLAGSMKL_GNU_OPENMPI)
+ompi_gnu_linux_db : FCOMPL = mpifort
+ompi_gnu_linux_db : FOPENMPFLAGS = -fopenmp
+ompi_gnu_linux_db : obj = fds_ompi_gnu_linux_db
+ompi_gnu_linux_db : setup $(obj_mpi)
 	$(FCOMPL) $(FFLAGS) $(FOPENMPFLAGS) -o $(obj) $(obj_mpi) $(LFLAGSMKL)
 
-mpi_gnu_osx_64 : FFLAGS = -m64 -O2 -std=f2008 -frecursive -ffpe-summary=none -fall-intrinsics $(GITINFOGNU) $(GNU_COMPINFO) $(FFLAGSMKL_GNU_CUSTOM) $(GFORTRAN_OPTIONS)
-mpi_gnu_osx_64 : LFLAGSMKL = $(LFLAGSMKL_GNU_CUSTOM)
-mpi_gnu_osx_64 : FCOMPL = mpifort
-mpi_gnu_osx_64 : FOPENMPFLAGS =
-mpi_gnu_osx_64 : obj = fds_mpi_gnu_osx_64
-mpi_gnu_osx_64 : setup $(obj_mpi)
+ompi_gnu_osx : FFLAGS = -m64 -O2 -std=f2018 -frecursive -ffpe-summary=none -fall-intrinsics $(GITINFOGNU) $(GNU_COMPINFO) $(FFLAGSMKL_GNU_CUSTOM) $(GFORTRAN_OPTIONS)
+ompi_gnu_osx : LFLAGSMKL = $(LFLAGSMKL_GNU_CUSTOM)
+ompi_gnu_osx : FCOMPL = mpifort
+ompi_gnu_osx : FOPENMPFLAGS =
+ompi_gnu_osx : obj = fds_ompi_gnu_osx
+ompi_gnu_osx : setup $(obj_mpi)
 	$(FCOMPL) $(FFLAGS) $(FOPENMPFLAGS) -o $(obj) $(obj_mpi) $(LFLAGSMKL)
 
-mpi_gnu_osx_64_db : FFLAGS = -m64 -O0 -std=f2008 -ggdb -Wall -Wcharacter-truncation -Wno-target-lifetime -fcheck=all -fbacktrace -ffpe-trap=invalid,zero,overflow -frecursive -ffpe-summary=none -fall-intrinsics $(GITINFOGNU) $(GNU_COMPINFO) $(FFLAGSMKL_GNU_CUSTOM) $(GFORTRAN_OPTIONS)
-mpi_gnu_osx_64_db : LFLAGSMKL = $(LFLAGSMKL_GNU_CUSTOM)
-mpi_gnu_osx_64_db : FCOMPL = mpifort
-mpi_gnu_osx_64_db : FOPENMPFLAGS =
-mpi_gnu_osx_64_db : obj = fds_mpi_gnu_osx_64_db
-mpi_gnu_osx_64_db : setup $(obj_mpi)
+ompi_gnu_osx_db : FFLAGS = -m64 -O0 -std=f2018 -ggdb -Wall -Wcharacter-truncation -Wno-target-lifetime -fcheck=all -fbacktrace -ffpe-trap=invalid,zero,overflow -frecursive -ffpe-summary=none -fall-intrinsics $(GITINFOGNU) $(GNU_COMPINFO) $(FFLAGSMKL_GNU_CUSTOM) $(GFORTRAN_OPTIONS)
+ompi_gnu_osx_db : LFLAGSMKL = $(LFLAGSMKL_GNU_CUSTOM)
+ompi_gnu_osx_db : FCOMPL = mpifort
+ompi_gnu_osx_db : FOPENMPFLAGS =
+ompi_gnu_osx_db : obj = fds_ompi_gnu_osx_db
+ompi_gnu_osx_db : setup $(obj_mpi)
 	$(FCOMPL) $(FFLAGS) $(FOPENMPFLAGS) -o $(obj) $(obj_mpi) $(LFLAGSMKL)
 
-mpi_gnu_osx_64_dv : FFLAGS = -m64 -O1 -fbacktrace -std=f2008 -frecursive -ffpe-summary=none -fall-intrinsics $(GITINFOGNU) $(GNU_COMPINFO) $(FFLAGSMKL_GNU_CUSTOM) $(GFORTRAN_OPTIONS)
-mpi_gnu_osx_64_dv : LFLAGSMKL = $(LFLAGSMKL_GNU_CUSTOM)
-mpi_gnu_osx_64_dv : FCOMPL = mpifort
-mpi_gnu_osx_64_dv : FOPENMPFLAGS =
-mpi_gnu_osx_64_dv : obj = fds_mpi_gnu_osx_64_dv
-mpi_gnu_osx_64_dv : setup $(obj_mpi)
+ompi_gnu_osx_dv : FFLAGS = -m64 -O1 -fbacktrace -std=f2018 -frecursive -ffpe-summary=none -fall-intrinsics $(GITINFOGNU) $(GNU_COMPINFO) $(FFLAGSMKL_GNU_CUSTOM) $(GFORTRAN_OPTIONS)
+ompi_gnu_osx_dv : LFLAGSMKL = $(LFLAGSMKL_GNU_CUSTOM)
+ompi_gnu_osx_dv : FCOMPL = mpifort
+ompi_gnu_osx_dv : FOPENMPFLAGS =
+ompi_gnu_osx_dv : obj = fds_ompi_gnu_osx_dv
+ompi_gnu_osx_dv : setup $(obj_mpi)
 	$(FCOMPL) $(FFLAGS) $(FOPENMPFLAGS) -o $(obj) $(obj_mpi) $(LFLAGSMKL)
 
 # *** Object Dependencies ***
 
 prec.o :
+imkl.o :
 cons.o : prec.o
+prop.o : prec.o
 devc.o : prec.o
-type.o : prec.o cons.o
-data.o : prec.o func.o cons.o
+type.o : prec.o cons.o imkl.o
+data.o : prec.o func.o cons.o prop.o
 rcal.o : func.o prec.o cons.o
 mesh.o : prec.o type.o
 func.o : prec.o cons.o type.o mesh.o devc.o
 gsmv.o : prec.o func.o cons.o mesh.o
-smvv.o : geom.o prec.o func.o
+smvv.o : geom.o prec.o func.o cons.o data.o
 turb.o : prec.o func.o cons.o mesh.o
 soot.o : prec.o mesh.o cons.o func.o turb.o
-ieva.o : func.o prec.o cons.o type.o mesh.o
 pois.o : prec.o cons.o
-scrc.o : prec.o cons.o mesh.o func.o pois.o geom.o
-evac.o : func.o prec.o cons.o type.o mesh.o ieva.o data.o
-geom.o : gsmv.o func.o prec.o cons.o type.o mesh.o turb.o
+geom.o : gsmv.o func.o prec.o cons.o type.o mesh.o turb.o imkl.o data.o
 ccib.o : gsmv.o func.o prec.o cons.o type.o mesh.o turb.o geom.o
 radi.o : func.o prec.o cons.o type.o mesh.o rcal.o geom.o
-part.o : func.o prec.o cons.o type.o mesh.o devc.o data.o geom.o soot.o
+part.o : func.o prec.o cons.o type.o mesh.o devc.o data.o geom.o soot.o ccib.o
 vege.o : func.o prec.o cons.o type.o mesh.o geom.o
 ctrl.o : prec.o cons.o type.o mesh.o func.o
-samr.o : prec.o cons.o mesh.o turb.o
-dump.o : func.o prec.o cons.o type.o mesh.o devc.o evac.o smvv.o turb.o scrc.o data.o radi.o soot.o geom.o ccib.o
-hvac.o : func.o prec.o cons.o type.o mesh.o ctrl.o
+hvac.o : func.o prec.o cons.o type.o mesh.o ctrl.o data.o geom.o
 mass.o : func.o prec.o cons.o type.o mesh.o turb.o soot.o geom.o ccib.o
-read.o : func.o prec.o cons.o type.o mesh.o devc.o ctrl.o radi.o evac.o hvac.o scrc.o data.o geom.o mass.o soot.o
 wall.o : func.o prec.o cons.o type.o mesh.o hvac.o mass.o soot.o geom.o ccib.o
 fire.o : func.o prec.o cons.o type.o mesh.o mass.o soot.o radi.o
-divg.o : func.o prec.o cons.o type.o mesh.o scrc.o evac.o mass.o ccib.o
-velo.o : func.o prec.o cons.o type.o mesh.o turb.o geom.o scrc.o ccib.o
-pres.o : func.o prec.o cons.o type.o mesh.o pois.o velo.o scrc.o geom.o ccib.o
-init.o : func.o prec.o cons.o type.o mesh.o devc.o radi.o pois.o data.o evac.o pres.o geom.o
-main.o : func.o prec.o cons.o type.o mesh.o devc.o smvv.o mass.o divg.o velo.o wall.o fire.o ieva.o radi.o evac.o part.o vege.o dump.o read.o init.o pres.o pois.o ctrl.o turb.o hvac.o scrc.o data.o geom.o ccib.o soot.o
+velo.o : func.o prec.o cons.o type.o mesh.o turb.o geom.o ccib.o
+pres.o : func.o prec.o cons.o type.o mesh.o pois.o velo.o geom.o ccib.o imkl.o
+init.o : func.o prec.o cons.o type.o mesh.o devc.o radi.o pois.o data.o pres.o geom.o
+dump.o : func.o prec.o cons.o type.o mesh.o devc.o smvv.o turb.o data.o radi.o soot.o geom.o ccib.o fire.o
+read.o : func.o prec.o cons.o type.o mesh.o devc.o ctrl.o radi.o hvac.o data.o geom.o mass.o soot.o prop.o
+divg.o : func.o prec.o cons.o type.o mesh.o mass.o ccib.o
+main.o : func.o prec.o cons.o type.o mesh.o devc.o smvv.o mass.o divg.o velo.o wall.o fire.o radi.o part.o vege.o dump.o read.o init.o pres.o pois.o ctrl.o turb.o hvac.o data.o geom.o ccib.o soot.o prop.o
 
 prec.obj :
+imkl.obj :
 cons.obj : prec.obj
+prop.obj : prec.obj
 devc.obj : prec.obj
-type.obj : prec.obj cons.obj
-data.obj : prec.obj func.obj cons.obj
+type.obj : prec.obj cons.obj imkl.obj
+data.obj : prec.obj func.obj cons.obj prop.obj
 rcal.obj : func.obj prec.obj cons.obj
 mesh.obj : prec.obj type.obj
 func.obj : prec.obj cons.obj type.obj mesh.obj devc.obj
 gsmv.obj : prec.obj func.obj cons.obj mesh.obj
-smvv.obj : geom.obj prec.obj func.obj
+smvv.obj : geom.obj prec.obj func.obj cons.obj data.obj
 turb.obj : prec.obj func.obj cons.obj mesh.obj
 soot.obj : prec.obj mesh.obj cons.obj func.obj turb.obj
-ieva.obj : func.obj prec.obj cons.obj type.obj mesh.obj
 pois.obj : prec.obj cons.obj
-scrc.obj : prec.obj cons.obj mesh.obj func.obj pois.obj geom.obj
-evac.obj : func.obj prec.obj cons.obj type.obj mesh.obj ieva.obj data.obj
-geom.obj : gsmv.obj func.obj prec.obj cons.obj type.obj mesh.obj turb.obj
+geom.obj : gsmv.obj func.obj prec.obj cons.obj type.obj mesh.obj turb.obj imkl.obj data.obj
 ccib.obj : gsmv.obj func.obj prec.obj cons.obj type.obj mesh.obj turb.obj geom.obj
 radi.obj : func.obj prec.obj cons.obj type.obj mesh.obj rcal.obj geom.obj
-part.obj : func.obj prec.obj cons.obj type.obj mesh.obj devc.obj data.obj geom.obj soot.obj
+part.obj : func.obj prec.obj cons.obj type.obj mesh.obj devc.obj data.obj geom.obj soot.obj ccib.obj
 vege.obj : func.obj prec.obj cons.obj type.obj mesh.obj geom.obj
 ctrl.obj : prec.obj cons.obj type.obj mesh.obj func.obj
-samr.obj : prec.obj cons.obj mesh.obj turb.obj
-dump.obj : func.obj prec.obj cons.obj type.obj mesh.obj devc.obj evac.obj smvv.obj turb.obj scrc.obj data.obj radi.obj soot.obj geom.obj ccib.obj
-hvac.obj : func.obj prec.obj cons.obj type.obj mesh.obj ctrl.obj
+hvac.obj : func.obj prec.obj cons.obj type.obj mesh.obj ctrl.obj data.obj geom.obj
 mass.obj : func.obj prec.obj cons.obj type.obj mesh.obj turb.obj soot.obj geom.obj ccib.obj
-read.obj : func.obj prec.obj cons.obj type.obj mesh.obj devc.obj ctrl.obj radi.obj evac.obj hvac.obj scrc.obj data.obj geom.obj mass.obj soot.obj
 wall.obj : func.obj prec.obj cons.obj type.obj mesh.obj hvac.obj mass.obj soot.obj geom.obj ccib.obj
 fire.obj : func.obj prec.obj cons.obj type.obj mesh.obj mass.obj soot.obj radi.obj
-divg.obj : func.obj prec.obj cons.obj type.obj mesh.obj scrc.obj evac.obj mass.obj ccib.obj
-velo.obj : func.obj prec.obj cons.obj type.obj mesh.obj turb.obj geom.obj scrc.obj ccib.obj 
-pres.obj : func.obj prec.obj cons.obj type.obj mesh.obj pois.obj velo.obj scrc.obj geom.obj ccib.obj
-init.obj : func.obj prec.obj cons.obj type.obj mesh.obj devc.obj pois.obj data.obj evac.obj pres.obj geom.obj
-main.obj : func.obj prec.obj cons.obj type.obj mesh.obj devc.obj smvv.obj mass.obj divg.obj velo.obj wall.obj fire.obj ieva.obj radi.obj evac.obj part.obj vege.obj dump.obj read.obj init.obj pres.obj pois.obj ctrl.obj turb.obj hvac.obj scrc.obj data.obj geom.obj ccib.obj soot.obj
+velo.obj : func.obj prec.obj cons.obj type.obj mesh.obj turb.obj geom.obj ccib.obj
+pres.obj : func.obj prec.obj cons.obj type.obj mesh.obj pois.obj velo.obj geom.obj ccib.obj imkl.obj
+init.obj : func.obj prec.obj cons.obj type.obj mesh.obj devc.obj pois.obj data.obj pres.obj geom.obj
+dump.obj : func.obj prec.obj cons.obj type.obj mesh.obj devc.obj smvv.obj turb.obj data.obj radi.obj soot.obj geom.obj ccib.obj fire.obj
+read.obj : func.obj prec.obj cons.obj type.obj mesh.obj devc.obj ctrl.obj radi.obj hvac.obj data.obj geom.obj mass.obj soot.obj prop.obj
+divg.obj : func.obj prec.obj cons.obj type.obj mesh.obj mass.obj ccib.obj
+main.obj : func.obj prec.obj cons.obj type.obj mesh.obj devc.obj smvv.obj mass.obj divg.obj velo.obj wall.obj fire.obj radi.obj part.obj vege.obj dump.obj read.obj init.obj pres.obj pois.obj ctrl.obj turb.obj hvac.obj data.obj geom.obj ccib.obj soot.obj prop.obj
 
 #*** Clean Target to remove Object and Module files ***
 

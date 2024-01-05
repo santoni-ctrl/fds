@@ -13,6 +13,7 @@ close all
 clear all
 
 plot_style
+Font_Interpreter='LaTeX';
 
 Q = [14.4 21.7 33.0 44.9 57.5]; % kW [14.4 21.7 33.0 44.9 57.5]
 g = 9.8; % m/s2
@@ -31,11 +32,13 @@ Manuals_Dir = '../../Manuals/';
 datadir = [OUT_Dir,'McCaffrey_Plume/'];
 plotdir = [Manuals_Dir,'FDS_Validation_Guide/SCRIPT_FIGURES/McCaffrey_Plume/'];
 
-resolution = {'Coarse','Medium','Fine'};
+resolution = {'Crude','Coarse','Medium','Fine'};
 
 for k=1:length(resolution)
 
     switch resolution{k}
+        case 'Crude'
+            chid = {'McCaffrey_14_kW_5','McCaffrey_22_kW_5','McCaffrey_33_kW_5','McCaffrey_45_kW_5','McCaffrey_57_kW_5'};
         case 'Coarse'
             chid = {'McCaffrey_14_kW_11','McCaffrey_22_kW_11','McCaffrey_33_kW_11','McCaffrey_45_kW_11','McCaffrey_57_kW_11'};
         case 'Medium'
@@ -76,8 +79,8 @@ for k=1:length(resolution)
     ymax = 3.0;
     axis([xmin xmax ymin ymax])
     %grid on
-    xlabel('{\itz/Q}^{2/5} (m kW^{-2/5})','FontSize',Label_Font_Size,'Interpreter',Font_Interpreter)
-    ylabel('{\itV/Q}^{1/5} (m s^{-1} kW^{-1/5})','FontSize',Label_Font_Size,'Interpreter',Font_Interpreter)
+    xlabel('${z/Q}^{2/5}$ (m kW$^{-2/5}$)','FontSize',Label_Font_Size,'Interpreter',Font_Interpreter)
+    ylabel('${V/Q}^{1/5}$ (m s$^{-1}$ kW$^{-1/5}$)','FontSize',Label_Font_Size,'Interpreter',Font_Interpreter)
 
     % FDS results velocity
 
@@ -96,7 +99,7 @@ for k=1:length(resolution)
     set(gca,'FontName',Font_Name)
     set(gca,'FontSize',Label_Font_Size)
 
-    leg_key = {'14.4 kW','21.7 kW','33.0 kW','44.9 kW','57.5 kW','({\itz/Q}^{2/5})^\eta'};
+    leg_key = {'14.4 kW','21.7 kW','33.0 kW','44.9 kW','57.5 kW','(${z/Q}^{2/5}$)$^\eta$'};
     lh = legend(hh,leg_key,'location','southeast');
     set(lh,'Interpreter',Font_Interpreter)
     set(lh,'FontSize',Key_Font_Size)
@@ -137,8 +140,8 @@ for k=1:length(resolution)
     ymax = 1200;
     axis([xmin xmax ymin ymax])
     %grid on
-    xlabel('{\itz/Q}^{2/5} (m kW^{-2/5})','FontSize',Label_Font_Size,'Interpreter',Font_Interpreter)
-    ylabel('\Delta{\itT} (\circC)','FontSize',Label_Font_Size,'Interpreter',Font_Interpreter)
+    xlabel('${z/Q}^{2/5}$ (m kW$^{-2/5}$)','FontSize',Label_Font_Size,'Interpreter',Font_Interpreter)
+    ylabel('$\Delta{T}$ ($^\circ$C)','FontSize',Label_Font_Size,'Interpreter',Font_Interpreter)
 
     for i=1:n_chid
         M = importdata([datadir,chid{i},'_line.csv'],',',2);
@@ -151,7 +154,7 @@ for k=1:length(resolution)
     set(gca,'FontName',Font_Name)
     set(gca,'FontSize',Label_Font_Size)
 
-    leg_key = {'14.4 kW','21.7 kW','33.0 kW','44.9 kW','57.5 kW','({\itz/Q}^{2/5})^\eta'};
+    leg_key = {'14.4 kW','21.7 kW','33.0 kW','44.9 kW','57.5 kW','(${z/Q}^{2/5}$)$^\eta$'};
     lh = legend(hh,leg_key,'location','southwest');
     set(lh,'Interpreter',Font_Interpreter)
     set(lh,'FontSize',Key_Font_Size)

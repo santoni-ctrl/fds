@@ -39,8 +39,10 @@ $RUNSMV -d Flowfields symmetry_test_2
 $RUNSMV -d Flowfields symmetry_test_mpi
 $RUNSMV -d Flowfields jet_fan
 $RUNSMV -d Flowfields velocity_bc_test
+$RUNSMV -d Heat_Transfer checkerboard
+$RUNSMV -d Heat_Transfer ht3d_demo
 $RUNSMV -d Heat_Transfer ht3d_ibeam
-$RUNSMV -d Heat_Transfer ht3d_sphere_51
+$RUNSMV -d Heat_Transfer ht3d_network
 $RUNSMV -d HVAC HVAC_mass_conservation
 $RUNSMV -d HVAC HVAC_energy_pressure
 $RUNSMV -d HVAC leak_test_2
@@ -71,7 +73,6 @@ $RUNSMV -d Scalar_Analytical_Solution soborot_charm_square_wave_64
 $RUNSMV -d Sprinklers_and_Sprays cascade
 $RUNSMV -d Turbulence csmag_64
 $RUNSMV -d Turbulence dsmag_64
-$RUNSMV -d Turbulence ribbed_channel_80
 $RUNSMV -d WUI Bova_1a
 $RUNSMV -d WUI Bova_1b
 $RUNSMV -d WUI Bova_4a

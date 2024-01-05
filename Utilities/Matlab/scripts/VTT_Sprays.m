@@ -5,6 +5,7 @@
 disp('VTT_Sprays ...')
 
 plot_style
+Font_Interpreter='LaTeX';
 
 outdir = '../../../out/VTT_Sprays/';
 expdir = '../../../exp/VTT_Sprays/';
@@ -65,12 +66,12 @@ hold on
 plot(L1.data(:,fds40velox),-L1.data(:,fds40velo),'k-');
 plot(L2.data(:,fds40velox),-L2.data(:,fds40velo),'b-');
 plot(L4.data(:,fds40velox),-L4.data(:,fds40velo),'r-');
-axis([ -0.3 0.3 0 7]);
+axis([ -0.3 0.3 0 10]);
 set(gca,'XTick',[-.3:.1:.3]);
 set(gca,'FontName',Font_Name)
 set(gca,'FontSize',Label_Font_Size)
 xlabel('Radial position (m)', 'Interpreter', Font_Interpreter,'FontSize',Label_Font_Size)
-ylabel('Velocity (m/s)','FontSize',Label_Font_Size)
+ylabel('Velocity (m/s)','FontSize',Label_Font_Size, 'Interpreter', Font_Interpreter)
 h = legend({'Experiment','FDS 1 cm','FDS 2 cm','FDS 4 cm'}, 'Location', 'Northeast');
 set(h,'Interpreter', Font_Interpreter)
 set(h,'FontSize', Key_Font_Size)
@@ -101,7 +102,7 @@ set(gca,'XTick',[-.3:.1:.3]);
 set(gca,'FontName',Font_Name)
 set(gca,'FontSize',Label_Font_Size)
 xlabel('Radial position (m)', 'Interpreter', Font_Interpreter,'FontSize',Label_Font_Size)
-ylabel('Diameter d_{32} ({\mu}m)','FontSize',Label_Font_Size)
+ylabel('Diameter d$_{32}$ ($\mu$m)','FontSize',Label_Font_Size, 'Interpreter', Font_Interpreter)
 h = legend({'Experiment','FDS 1 cm','FDS 2 cm','FDS 4 cm'}, 'Location', 'Southeast');
 set(h,'Interpreter', Font_Interpreter)
 set(h,'FontSize', Key_Font_Size)
@@ -132,7 +133,7 @@ set(gca,'XTick',[-.3:.1:.3]);
 set(gca,'FontName',Font_Name)
 set(gca,'FontSize',Label_Font_Size)
 xlabel('Radial position (m)', 'Interpreter', Font_Interpreter,'FontSize',Label_Font_Size)
-ylabel('Droplet Flux (kg/m^2/s)','FontSize',Label_Font_Size)
+ylabel('Droplet Flux (kg/m$^2$/s)','FontSize',Label_Font_Size, 'Interpreter', Font_Interpreter)
 h = legend({'Experiment','FDS 1 cm','FDS 2 cm','FDS 4 cm'}, 'Location', 'Northeast');
 set(h,'Interpreter', Font_Interpreter)
 set(h,'FontSize', Key_Font_Size)
@@ -159,12 +160,12 @@ hold on
 plot(L1.data(:,fds62velox),-L1.data(:,fds62velo),'k-');
 plot(L2.data(:,fds62velox),-L2.data(:,fds62velo),'b-');
 plot(L4.data(:,fds62velox),-L4.data(:,fds62velo),'r-');
-axis([ -0.3 0.3 0 7]);
+axis([ -0.3 0.3 0 10]);
 set(gca,'XTick',[-.3:.1:.3]);
 set(gca,'FontName',Font_Name)
 set(gca,'FontSize',Label_Font_Size)
 xlabel('Radial position (m)', 'Interpreter', Font_Interpreter,'FontSize',Label_Font_Size)
-ylabel('Velocity (m/s)','FontSize',Label_Font_Size)
+ylabel('Velocity (m/s)','FontSize',Label_Font_Size, 'Interpreter', Font_Interpreter)
 h = legend({'Experiment','FDS 1 cm','FDS 2 cm','FDS 4 cm'}, 'Location', 'Northeast');
 set(h,'Interpreter', Font_Interpreter)
 set(h,'FontSize', Key_Font_Size)
@@ -195,7 +196,7 @@ set(gca,'XTick',[-.3:.1:.3]);
 set(gca,'FontName',Font_Name)
 set(gca,'FontSize',Label_Font_Size)
 xlabel('Radial position (m)', 'Interpreter', Font_Interpreter,'FontSize',Label_Font_Size)
-ylabel('Diameter d_{32} ({\mu}m)','FontSize',Label_Font_Size)
+ylabel('Diameter d$_{32}$ ($\mu$m)','FontSize',Label_Font_Size, 'Interpreter', Font_Interpreter)
 h = legend({'Experiment','FDS 1 cm','FDS 2 cm','FDS 4 cm'}, 'Location', 'Southeast');
 set(h,'Interpreter', Font_Interpreter)
 set(h,'FontSize', Key_Font_Size)
@@ -226,7 +227,7 @@ set(gca,'XTick',[-.3:.1:.3]);
 set(gca,'FontName',Font_Name)
 set(gca,'FontSize',Label_Font_Size)
 xlabel('Radial position (m)', 'Interpreter', Font_Interpreter,'FontSize',Label_Font_Size)
-ylabel('Droplet Flux (kg/m^2/s)','FontSize',Label_Font_Size)
+ylabel('Droplet Flux (kg/m$^2$/s)','FontSize',Label_Font_Size, 'Interpreter', Font_Interpreter)
 h = legend({'Experiment','FDS 1 cm','FDS 2 cm','FDS 4 cm'}, 'Location', 'Northeast');
 set(h,'Interpreter', Font_Interpreter)
 set(h,'FontSize', Key_Font_Size)

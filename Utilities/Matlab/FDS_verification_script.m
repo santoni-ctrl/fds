@@ -32,7 +32,6 @@ disp('vort2d...');                         vort2d
 disp('wall_internal_radiation...');        wall_internal_radiation
 disp('ashrae_7...');                       ashrae_7
 disp('flame_species...');                  flame_species
-disp('EDC_species...');                    EDC_species
 disp('cat_propane_depo...');               cat_propane_depo
 disp('burke_schumann...');                 burke_schumann
 disp('convective_cooling_convergence...'); convective_cooling_convergence
@@ -68,8 +67,6 @@ disp('jet_decay...');                     jet_decay
 disp('wall_model...');                    wall_model
 disp('pyrolysis...');                     pyrolysis
 disp('birch_tga...');                     birch_tga
-disp('water_ice_water...');               water_ice_water
-disp('pcm_slab...');                      pcm_slab
 disp('pulsating...');                     pulsating
 disp('compression_wave...');              compression_wave
 disp('soborot_mass_transport...');        soborot_mass_transport
@@ -90,13 +87,24 @@ disp('radiating_polygon...');             radiating_polygon
 disp('saad_mms_temporal_error...');       saad_mms_temporal_error
 disp('saad_cc_mms_temporal_error...');    saad_cc_mms_temporal_error
 disp('shunn_mms_temporal_error...');      shunn_mms_temporal_error
+disp('shunn_mms_favreZ...');              shunn_mms_favreZ
+disp('favre_test...');                    favre_test
 disp('scaling_tests...');                 scaling_tests
 disp('hvac_mass_transport...');           hvac_mass_transport
 disp('particle_size_distribution...');    particle_size_distribution
 disp('mass_balance...');                  mass_balance
 disp('mass_balance_reac...');             mass_balance_reac
-disp('ht3d_cond...');                     ht3d_cond
+disp('mass_balance_gas_volume...');       mass_balance_gas_volume
 disp('ht3d_sphere...');                   ht3d_sphere
 disp('geom_positive_errors...');          geom_positive_errors
+disp('geom_channel_test...');             geom_channel_test
+disp('atmospheric_boundary_layer...');    atmospheric_boundary_layer
+disp('level_set_ellipse...');             level_set_ellipse
+disp('htc_forced...');                    htc_forced
+disp('natconh...');                       natconh
+disp('natconv...');                       natconv
+disp('freecon_sphere...');                freecon_sphere
+disp('nat_conv_hot_plate...');            nat_conv_hot_plate
+disp('tree_shapes...');                   tree_shapes
 
 display('verification scripts completed successfully!')

@@ -256,12 +256,19 @@ for i=2:n_plots
                     end
                 elseif strcmp(Metric,'all')
                     Save_Measured_Metric(i,j,1:length(indices)) = M(indices,d1_Dep_Col)-d1_Initial_Value;
+                    Save_Measured_Quantity(i,1:length(indices)) = S1(j);
                 elseif strcmp(Metric,'threshold')
-                    Save_Measured_Metric(i,j,1) = min(M(indices,d1_Dep_Col));
+                    Save_Measured_Metric(i,j,1) = min(M(indices,d1_Dep_Col))-d1_Initial_Value;
+                elseif strcmp(Metric,'tolerance')
+                    Save_Measured_Metric(i,j,1) = 0;
                 elseif strcmp(Metric,'area')
                     Save_Measured_Metric(i,j,1) = trapz(M(indices,d1_Ind_Col), M(indices,d1_Dep_Col))-d1_Initial_Value;
+                elseif strcmp(Metric,'ipct')
+                    Save_Measured_Metric(i,j,1) = inverse_percentile(M(indices,d1_Ind_Col), M(indices,d1_Dep_Col))-d1_Initial_Value;
                 elseif strcmp(Metric,'end')
                     Save_Measured_Metric(i,j,1) = M(indices(end),d1_Dep_Col)-d1_Initial_Value;
+                elseif strcmp(Metric,'start')
+                    Save_Measured_Metric(i,j,1) = M(indices(1),d1_Dep_Col);
                 % If end_x_y is specified for a plot with multiple curves,
                 % then get the results from curve x only
                 elseif strfind(Metric,'end_')
@@ -303,7 +310,8 @@ for i=2:n_plots
                     elseif strcmp(Plot_Type,'semilogy')
                         K1(j) = semilogy(X,Y,char(style(j))); hold on
                     end
-                    set(K1(j),'linewidth',Line_Width)
+                    set(K1(j),'linewidth', D1_Line_Width)
+                    set(K1(j),'markersize',D1_Marker_Size)
                 else
                     if ~strcmp(char(style(j)),'blank')
                        if strcmp(Plot_Type,'linear')
@@ -316,7 +324,8 @@ for i=2:n_plots
                        elseif strcmp(Plot_Type,'semilogy')
                            K1(length(K1_save)+j) = semilogy(X,Y,char(style(j))); hold on
                        end
-                       set(K1(length(K1_save)+j),'linewidth',Line_Width)
+                       set(K1(length(K1_save)+j),'linewidth', D1_Line_Width)
+                       set(K1(length(K1_save)+j),'markersize',D1_Marker_Size)
                     end
                 end
             end
@@ -327,6 +336,7 @@ for i=2:n_plots
         end
 
         % Plot the FDS or model data (d2)
+
         if ~exist(d2_Filename,'file')
            display(['Error: File ', d2_Filename, ' does not exist. Skipping case.'])
            continue
@@ -359,8 +369,13 @@ for i=2:n_plots
                 indices = find(d2_Comp_Start    <=M(:,d2_Ind_Col)    & M(:,d2_Ind_Col)   <=d2_Comp_End & ...
                                d2_Dep_Comp_Start<=M(:,d2_Dep_Col(1)) & M(:,d2_Dep_Col(1))<=d2_Dep_Comp_End);
 
-                M_Ind = M(indices,d2_Ind_Col);
-                M_Dep = sum(M(indices,d2_Dep_Col),2);
+                if ~isempty(indices)
+                    M_Ind = M(indices,d2_Ind_Col);
+                    M_Dep = sum(M(indices,d2_Dep_Col),2);
+                else
+                    M_Ind = -999;
+                    M_Dep = -999;
+                end
 
                 if strcmp(Metric,'max')
                     Save_Predicted_Metric(i,j,1) = max(M_Dep)-d2_Initial_Value;
@@ -391,12 +406,19 @@ for i=2:n_plots
                     end
                 elseif strcmp(Metric,'all')
                     Save_Predicted_Metric(i,j,1:length(indices)) = M_Dep-d2_Initial_Value;
+                    Save_Predicted_Quantity(i,1:length(indices)) = S2(j);
                 elseif strcmp(Metric,'threshold')
                     Save_Predicted_Metric(i,j,1) = min(M_Dep)-d2_Initial_Value;
+                elseif strcmp(Metric,'tolerance')
+                    Save_Predicted_Metric(i,j,1) = max(abs(M_Dep-d2_Initial_Value));
                 elseif strcmp(Metric,'area')
                     Save_Predicted_Metric(i,j,1) = trapz(M_Ind,M_Dep)-d2_Initial_Value;
+                elseif strcmp(Metric,'ipct')
+                    Save_Predicted_Metric(i,j,1) = inverse_percentile(M_Ind,M_Dep)-d2_Initial_Value;
                 elseif strcmp(Metric,'end')
                     Save_Predicted_Metric(i,j,1) = M_Dep(end)-d2_Initial_Value;
+                elseif strcmp(Metric,'start')
+                    Save_Predicted_Metric(i,j,1) = M_Dep(1);
                 % If end_x_y is specified for a plot with multiple curves,
                 % then get the results from curve y only
                 elseif strfind(Metric,'end_')
@@ -422,8 +444,13 @@ for i=2:n_plots
 
                 % Plots
                 indices = find(d2_Start<=M(:,d2_Ind_Col) & M(:,d2_Ind_Col)<=d2_End);
-                M_Ind = M(indices,d2_Ind_Col);
-                M_Dep = sum(M(indices,d2_Dep_Col),2);
+                if ~isempty(indices)
+                    M_Ind = M(indices,d2_Ind_Col);
+                    M_Dep = sum(M(indices,d2_Dep_Col),2);
+                else
+                    M_Ind = -999;
+                    M_Dep = -999;
+                end
                 clear d2_Dep_Col;
                 if strcmp(Flip_Axis,'no')
                     X = M_Ind/Scale_Ind;
@@ -443,7 +470,8 @@ for i=2:n_plots
                     elseif strcmp(Plot_Type,'semilogy')
                         K2(j) = semilogy(X,Y,char(style(j)));
                     end
-                    set(K2(j),'linewidth',Line_Width)
+                    set(K2(j),'linewidth', D2_Line_Width)
+                    set(K2(j),'markersize',D2_Marker_Size)
                 else
                     if ~strcmp(char(style(j)),'blank')
                        if strcmp(Plot_Type,'linear')
@@ -456,7 +484,8 @@ for i=2:n_plots
                        elseif strcmp(Plot_Type,'semilogy')
                            K2(length(K2_save)+j) = semilogy(X,Y,char(style(j)));
                        end
-                       set(K2(length(K2_save)+j),'linewidth',Line_Width)
+                       set(K2(length(K2_save)+j),'linewidth', D2_Line_Width)
+                       set(K2(length(K2_save)+j),'markersize',D2_Marker_Size)
                     end
                 end
             end

@@ -14,8 +14,8 @@ RAD = 0.1525;            % Waterloo outside diameter
 PAN_THICKNESS = 0.015;   % Waterloo pan thickness (0.15 cm), here thickened by 10x
 LIP_HEIGHT = 0.01;
 
-IBAR = 60; % dx=2 cm -->IBAR=30; dx=1 cm --> IBAR=60; dx=0.5 cm --> IBAR=120
-JBAR = 60;
+IBAR = 120; % dx=2 cm -->IBAR=30; dx=1 cm --> IBAR=60; dx=0.5 cm --> IBAR=120
+JBAR = 120;
 XS = -0.3;
 XF = 0.3;
 YS = -0.3;
@@ -26,7 +26,7 @@ DX = (XF-XS)/double(IBAR);
 DY = (YF-YS)/double(JBAR);
 AREA = 0.;
 
-fid = fopen('waterloo_pan_dx1cm.txt','w');
+fid = fopen('waterloo_pan_dxp5cm.txt','w');
 
 for J=1:JBAR
     Y = YS + DY*(J-0.5);
@@ -34,11 +34,11 @@ for J=1:JBAR
         X = XS + DX*(I-0.5);
         if ((X-X0)^2+(Y-Y0)^2)<RAD^2
             fprintf(fid,'%s %6.3f, %6.3f, %6.3f, %6.3f, %6.3f, %6.3f, %s \n', ...
-                "&OBST XB=",X-0.5*DX,X+0.5*DX,Y-0.5*DY,Y+0.5*DY,Z1,Z2, " SURF_IDS='POOL','PAN','PAN' /");
+                "&OBST XB=",X-0.5*DX,X+0.5*DX,Y-0.5*DY,Y+0.5*DY,Z1,Z2, " HT3D=T, SURF_ID='POOL' /");
             AREA = AREA + DX*DY;
         elseif ((X-X0)^2+(Y-Y0)^2)<RAD2^2
             fprintf(fid,'%s %6.3f, %6.3f, %6.3f, %6.3f, %6.3f, %6.3f, %s \n', ...
-                "&OBST XB=",X-0.5*DX,X+0.5*DX,Y-0.5*DY,Y+0.5*DY,Z1,Z2+LIP_HEIGHT, " SURF_ID='PAN' /");
+                "&OBST XB=",X-0.5*DX,X+0.5*DX,Y-0.5*DY,Y+0.5*DY,Z1,Z2+LIP_HEIGHT, " HT3D=T, SURF_ID='PAN' /");
         end
     end
 end

@@ -42,10 +42,12 @@ LNG_Dispersion
 LNG_wind_profiles
 FM_Vertical_Wall_Flames
 umd_line_burner_process
+%Askervein_Hill
 UWO_Wind_Tunnel
 FM_Burner
 Crown_Fires
 ranz_marshall
+Phoenix_LNG_Fires
 
 % Dataplot and scatplot options
 
@@ -78,10 +80,15 @@ sandia_methane_fire
 spray_attenuation
 flame_height2
 purdue_flames
-christifire
 VTT_Sprays
 fm_datacenter_veltest
 mccaffrey_plume
+NIST_NRC_Parallel_Panels
 Wu_Bakar_Tunnels
+Memorial_Tunnel
+Memorial_Tunnel_2
+FHWA_Tunnel
+Theobald_Hose_Stream
+USFS_Deep_Fuel_Beds
 
 display('validation scripts completed successfully!')

@@ -10,14 +10,14 @@ INTEGER, ALLOCATABLE, DIMENSION(:) :: DEVC_PIPE_OPERATING
 !> \brief Derived type storing inputs for the PROP namelist group
 
 TYPE PROPERTY_TYPE
-   REAL(EB) :: DENSITY,DIAMETER,EMISSIVITY,HEAT_TRANSFER_COEFFICIENT,SPECIFIC_HEAT,RTI, &
+   REAL(EB) :: DENSITY,DIAMETER,EMISSIVITY,HEAT_TRANSFER_COEFFICIENT,SPECIFIC_HEAT,RTI,TIME_CONSTANT, &
                ACTIVATION_TEMPERATURE,ACTIVATION_OBSCURATION, &
                ALPHA_E,ALPHA_C,BETA_E,BETA_C,CHARACTERISTIC_VELOCITY,PARTICLE_VELOCITY,MASS_FLOW_RATE,FLOW_RATE,FLOW_TAU, &
                GAUGE_EMISSIVITY,GAUGE_TEMPERATURE,INITIAL_TEMPERATURE,K_FACTOR,C_FACTOR,OPERATING_PRESSURE,OFFSET,&
                SPRAY_ANGLE(2,2),P0=0._EB,PX(3)=0._EB,PXX(3,3)=0._EB
    INTEGER  :: PDPA_M=0,PDPA_N=0,N_SMOKEVIEW_PARAMETERS=0,N_SMOKEVIEW_IDS=0,N_INSERT,I_VEL=0,PARTICLES_PER_SECOND
    LOGICAL  :: PDPA_INTEGRATE=.TRUE.,PDPA_NORMALIZE=.TRUE.,HISTOGRAM_NORMALIZE=.TRUE.,HISTOGRAM=.FALSE., &
-               HISTOGRAM_CUMULATIVE=.FALSE.
+               HISTOGRAM_CUMULATIVE=.FALSE.,SPARK=.FALSE.
    REAL(EB) :: PDPA_START=0._EB,PDPA_END=1.E6_EB,PDPA_RADIUS=0.1_EB
    REAL(EB), ALLOCATABLE, DIMENSION(:) :: TABLE_ROW, V_FACTOR
    INTEGER  :: PART_INDEX=-1,FLOW_RAMP_INDEX,SPRAY_PATTERN_INDEX,Z_INDEX=-999,Y_INDEX=-999,PRESSURE_RAMP_INDEX
@@ -34,7 +34,7 @@ END TYPE PROPERTY_TYPE
 TYPE SUBDEVICE_TYPE
    !> !\{
    !> Intermediate value used for computing device SPATIAL_STATISTIC or TEMPORAL_STATISTIC
-   REAL(EB) :: VALUE_1=0._EB,VALUE_2=0._EB,VALUE_3=0._EB
+   REAL(EB) :: VALUE_1=0._EB,VALUE_2=0._EB,VALUE_3=0._EB,VALUE_4=0._EB
    !> !\}
    !> !\{
    !> Subdevice point, line, or bounding box physical coordinate (m)
@@ -64,26 +64,29 @@ TYPE DEVICE_TYPE
    REAL(EB) :: X,Y,Z
    !> !\}
    !> !\{
+   !> Origin of a linear array of devices
+   REAL(EB) :: X0,Y0,Z0
+   !> !\}
+   !> !\{
    !> Physical coordinates for DEVC spanning a line, plane, or volume
    REAL(EB) :: X1,X2,Y1,Y2,Z1,Z2
    !> !\}
-   REAL(EB) :: INITIAL_VALUE=-1.E10_EB,INSTANT_VALUE,VALUE=0._EB,SMOOTHED_VALUE=-1.E10_EB, &
-               DEPTH,TMP_L,Y_C,OBSCURATION,DELAY,ROTATION,SMOOTHING_FACTOR=0._EB,VALUE_1,VALUE_2,VALUE_3,&
+   REAL(EB) :: INITIAL_VALUE=-1.E10_EB,INSTANT_VALUE,VALUE=0._EB,SMOOTHED_VALUE=-1.E10_EB,PREVIOUS_VALUE=0._EB, &
+               DEPTH,TMP_L,Y_C,OBSCURATION,DELAY,ROTATION,SMOOTHING_FACTOR=0._EB,VALUE_1,VALUE_2,VALUE_3,VALUE_4,&
                SETPOINT, T_CHANGE=1.E6_EB,BYPASS_FLOWRATE,DT,TOTAL_FLOWRATE,FLOWRATE, &
                CONVERSION_ADDEND=0._EB,CONVERSION_FACTOR=1._EB,COORD_FACTOR=1._EB, &
                TIME_INTERVAL=0._EB,QUANTITY_RANGE(2),STATISTICS_START=-1.E20_EB,STATISTICS_END=1.E20_EB,&
                OVEC(3),DFVEC(3),CELL_L=-1._EB,RMS_VALUE=0._EB,RMS_VALUE2=0._EB,&
                COV_VALUE=0._EB,AVERAGE_VALUE=0._EB,AVERAGE_VALUE2=0._EB,&
-               PDPA_NUMER=0._EB,PDPA_DENUM=0._EB,Z_INT,TMP_UP,TMP_LOW,TIME_PERIOD=-1._EB, &
-               VALUE_1_PREVIOUS=0._EB,VALUE_2_PREVIOUS=0._EB,VALUE_3_PREVIOUS=0._EB
+               PDPA_NUMER=0._EB,PDPA_DENOM=0._EB,Z_INT,TMP_UP,TMP_LOW,TIME_PERIOD=-1._EB,DL
    REAL(EB), ALLOCATABLE, DIMENSION(:) :: TIME_ARRAY,TIME_MAX_VALUE,TIME_MIN_VALUE
    REAL(EB), ALLOCATABLE, DIMENSION(:,:) :: YY_SOOT
    REAL(EB), POINTER, DIMENSION(:) :: T_E,Y_E
    INTEGER  :: N_SUBDEVICES=0,IOR,IOR_ASSUMED=0,WALL_INDEX=-1,ORDINAL,MESH,&
                I_DEPTH,N_T_E,PROP_INDEX,ORIENTATION_INDEX=0,TRIP_DIRECTION,CTRL_INDEX=-1,N_INPUTS,SURF_INDEX=-1,&
                Z_INDEX=-999,Y_INDEX=-999,MATL_INDEX=-999,PART_CLASS_INDEX=0,REAC_INDEX=0,VELO_INDEX=0,&
-               NO_UPDATE_DEVC_INDEX=-1,NO_UPDATE_CTRL_INDEX=-1,CFACE_INDEX=-1,FED_ACTIVITY=2,&
-               DUCT_INDEX=-1,NODE_INDEX(2)=-1,POINT=1,LINE=0,LINE_COORD_CODE=123,PIPE_INDEX=1,LP_TAG=0,ORIENTATION_NUMBER=0,&
+               NO_UPDATE_DEVC_INDEX=-1,NO_UPDATE_CTRL_INDEX=-1,CFACE_INDEX=-1,FED_ACTIVITY=2,DUCT_INDEX=-1,NODE_INDEX(2)=-1,&
+               N_POINTS=1,POINT=1,LINE=0,LINE_COORD_CODE=123,PIPE_INDEX=1,LP_TAG=0,&
                DUCT_CELL_INDEX=-1,LOWEST_MESH=0,N_INTERVALS=-1,N_QUANTITY=1
    INTEGER, ALLOCATABLE, DIMENSION(:) :: DEVC_INDEX,SUBDEVICE_INDEX,QUANTITY_INDEX,I,J,K
    CHARACTER(LABEL_LENGTH), ALLOCATABLE, DIMENSION(:) :: QUANTITY
@@ -94,8 +97,7 @@ TYPE DEVICE_TYPE
                     INIT_ID='null',NO_UPDATE_DEVC_ID='null',NO_UPDATE_CTRL_ID='null',REAC_ID='null'
    CHARACTER(LABEL_LENGTH) :: SMOKEVIEW_LABEL
    LOGICAL :: INITIAL_STATE,CURRENT_STATE,LATCH,PRIOR_STATE,DRY=.FALSE.,HIDE_COORDINATES=.FALSE., &
-              EVACUATION=.FALSE.,RELATIVE=.FALSE.,OUTPUT=.TRUE.,ABSOLUTE_VALUE=.FALSE.,USE_PREVIOUS_VALUE=.FALSE., &
-              UNITS_SPECIFIED=.FALSE.
+              RELATIVE=.FALSE.,OUTPUT=.TRUE.,ABSOLUTE_VALUE=.FALSE.,UNITS_SPECIFIED=.FALSE.
    REAL(EB), ALLOCATABLE, DIMENSION(:) :: HISTOGRAM_COUNTS
 END TYPE DEVICE_TYPE
 
@@ -133,9 +135,20 @@ IMPLICIT NONE (TYPE,EXTERNAL)
 
 !> !\{
 !> Parameter defining the type of control function for CONTROL\%CONTROL_INDEX
-INTEGER, PARAMETER :: AND_GATE=1, OR_GATE=2, XOR_GATE=3, X_OF_N_GATE=4, TIME_DELAY=5, DEADBAND=6, CYCLING=7, &
-                      CUSTOM=8,KILL=9,CORE_DUMP=10,CF_SUM=11,CF_SUBTRACT=12,CF_MULTIPLY=13,CF_DIVIDE=14,CF_POWER=15,CF_PID=16,&
-                      CF_EXP=17,CF_LOG=18,CF_SIN=19,CF_COS=20,CF_ASIN=21,CF_ACOS=22,CF_MIN=23,CF_MAX=24, CF_ABS=25
+! When adding more functions:
+! 1-50 are fucntions with a logical output that have only one input
+! 51-100 are fucntions with a logical output that at least one inputs
+! 101-200 are functions with one input only
+! 201-300 are functions with two inputs only
+! 301-400 are functions with two or more inputs
+! 401-500 are functions with only a single DEVC input
+INTEGER, PARAMETER :: TIME_DELAY=1,CUSTOM=2,DEADBAND=3,KILL=4,CORE_DUMP=5,&
+                      AND_GATE=51,OR_GATE=52,XOR_GATE=53,X_OF_N_GATE=54,CF_EXTERNAL=55,&
+                      CF_EXP=101,CF_LOG=102,CF_PID=103,CF_SIN=104,CF_COS=105,CF_TAN=106,CF_ASIN=107,CF_ACOS=108,CF_ATAN=109,&
+                      CF_ABS=110,&
+                      CF_POWER=201,CF_DIVIDE=202,&
+                      CF_SUM=301,CF_SUBTRACT=302,CF_MULTIPLY=303,CF_MIN=304,CF_MAX=305,&
+                      CF_PERCENTILE=401
 !> !\}
 !> !\{
 !> Parameter used to define the type of input for CONTROL\%INPUT_TYPE
@@ -153,7 +166,7 @@ TYPE CONTROL_TYPE
    LOGICAL :: PRIOR_STATE=.FALSE.   !< Prior timestep logical state of the control function
    LOGICAL :: LATCH=.TRUE.          !< Control function can only change state once
    LOGICAL :: UPDATED=.FALSE.       !< Control function has been updatead in the current timestep
-   LOGICAL :: EVACUATION=.FALSE.    !< Control function is used by EVAC
+   LOGICAL :: CONTROL_FORCE(3)=.FALSE. !< Indicates whether control value will be used as a direct force in the momentum equation
    INTEGER :: CONTROL_INDEX=0       !< Indicates the type of control function
    INTEGER :: N_INPUTS=0            !< Number of inputs to the control function
    INTEGER :: RAMP_INDEX=0          !< Index of a RAMP used for the CUSTOM control function
@@ -177,9 +190,13 @@ TYPE CONTROL_TYPE
    REAL(EB) :: PROPORTIONAL_GAIN !<Proportional gain for a PID control function
    REAL(EB) :: INTEGRAL_GAIN !<Intregal gain for a PID control function
    REAL(EB) :: DIFFERENTIAL_GAIN !<Differential gain for a PID control function
+   REAL(EB) :: PERCENTILE        !< Percentile value for PERCENTILE function
    REAL(EB) :: PREVIOUS_VALUE=-9.E30_EB !<Prior timestep value used in computing the time derivative term for a PID control function
    REAL(EB) :: INTEGRAL=0._EB !<Current value of the time integral term for a PID control function
    REAL(EB) :: TARGET_VALUE = -9.E30_EB !<Desired target used to compute error value for input to a PID control function
+   REAL(EB), ALLOCATABLE, DIMENSION(:) :: PSUM  ! Array used in PERCENTILE calculation to sum point device values
+   REAL(EB), ALLOCATABLE, DIMENSION(:) :: LSUM  ! Array used in PERCENTILE calculation to indicate length along a linear array
+   REAL(EB), ALLOCATABLE, DIMENSION(:) :: DL    ! Array used in PERCENTILE calculation to indicate length segment
    CHARACTER(LABEL_LENGTH) :: ID='null' !<Name of control function
    CHARACTER(LABEL_LENGTH) :: RAMP_ID='null' !<Name of RAMP used for a CUSTOM control function
    CHARACTER(LABEL_LENGTH) :: INPUT_ID(40)='null' !<Array of DEVC\%ID or CTRL\%ID

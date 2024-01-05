@@ -74,7 +74,7 @@ if [ "$SMV_PATH" == "" ]; then
 fi
 export SMV=$SMV_PATH/smokeview_$PLATFORM$TEST$SIZE$DEBUG
 export RUNSMV=$SVNROOT/fds/Utilities/Scripts/runsmv.sh
-export SMVBINDIR="-bindir $SVNROOT/bot/Bundle/smv/for_bundle/"
+export SMVBINDIR="-bindir $SVNROOT/bot/Bundlebot/smv/for_bundle/"
 export BASEDIR=`pwd`/..
 
 echo "erasing SCRIPT_FIGURES png files"
@@ -94,13 +94,6 @@ fi
 if [ "$START_X" == "yes" ]; then
   source $SVNROOT/fds/Utilities/Scripts/stopXserver.sh 2>/dev/null
 fi
-
-# test smoke opacity levels in beam_detector case
-
-#cd $SVNROOT/fds/Verification/Detectors
-#../scripts/compare_csv.sh beam_detector_ss_check.csv beam_detector_ss.csv 2 0
-#../scripts/compare_csv.sh beam_detector_ss_check.csv beam_detector_ss.csv 3 0
-#../scripts/compare_csv.sh beam_detector_ss_check.csv beam_detector_ss.csv 4 0
 
 cd $CURDIR
 echo $progname complete

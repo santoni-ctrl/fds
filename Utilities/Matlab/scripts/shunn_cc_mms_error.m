@@ -39,7 +39,7 @@ vd2d_mms_p = @(x,y,t) ...
     0.5*(vd2d_mms_u(x,y,t)^2 + vd2d_mms_v(x,y,t)^2));
 
 L = 2;
-nx = [32,64,128,256,384];
+nx = [32,64,128,256,320];
 dx = L./nx;
 
 % % visualize field in time
@@ -65,7 +65,7 @@ datadir = '../../Verification/Complex_Geometry/';
 file_s=1;
 file_f=2;
 
-file_str = ['exp_cen';'exp_gdv'];
+file_str = ['exp_chm';'exp_gdv'];
 
 skip_case = 0;
 for ifile=file_s:file_f
@@ -74,7 +74,7 @@ for ifile=file_s:file_f
                         ['shunn3_64_cc_' file_str(ifile,:) '_mms.csv'], ...
                         ['shunn3_128_cc_' file_str(ifile,:) '_mms.csv'],...
                         ['shunn3_256_cc_' file_str(ifile,:) '_mms.csv'],...
-                        ['shunn3_384_cc_' file_str(ifile,:) '_mms.csv']};
+                        ['shunn3_320_cc_' file_str(ifile,:) '_mms.csv']};
    for n=1:length(file(ifile).name)
        if ~exist([datadir,file(ifile).name{n}])
            display(['Error: File ' [datadir,file(ifile).name{n}] ...
@@ -185,7 +185,7 @@ for ifile=file_s:file_f
         'Fontname',Font_Name)
     
     % add Git version if file is available
-    Git_Filename = [datadir,'shunn3_256_cc_exp_cen_git.txt'];
+    Git_Filename = [datadir,'shunn3_256_cc_exp_chm_git.txt'];
     addverstr(gca,Git_Filename,'loglog')
     
     % print to pdf
@@ -201,7 +201,7 @@ for ifile=file_s:file_f
     
     if (ifile==1) % Central flux limiter cases:
         % check errors
-        if e_r(end) > 2e-4
+        if e_r(end) > 3e-4
             display(['Matlab Warning: Density in shunn3 '    ...
             file_str(ifile,:) ' is out of tolerance. e_r = ',...
             num2str(e_r(end))])

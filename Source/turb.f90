@@ -18,8 +18,8 @@ PUBLIC :: INIT_TURB_ARRAYS, VARDEN_DYNSMAG, &
           TWOD_VORTEX_CERFACS, TWOD_VORTEX_UMD, TWOD_SOBOROT_UMD, &
           LOGLAW_HEAT_FLUX_MODEL, &
           NS_ANALYTICAL_SOLUTION, NS_U_EXACT, NS_V_EXACT, NS_H_EXACT, SANDIA_DAT, SPECTRAL_OUTPUT, SANDIA_OUT, &
-          FILL_EDGES, NATURAL_CONVECTION_MODEL, FORCED_CONVECTION_MODEL, RAYLEIGH_HEAT_FLUX_MODEL, YUAN_HEAT_FLUX_MODEL, &
-          WALE_VISCOSITY, TAU_WALL_IJ, ABL_WALL_MODEL, RAYLEIGH_MASS_FLUX_MODEL
+          FILL_EDGES, NATURAL_CONVECTION_MODEL, FORCED_CONVECTION_MODEL, RAYLEIGH_HEAT_FLUX_MODEL, &
+          WALE_VISCOSITY, TAU_WALL_IJ, RAYLEIGH_MASS_FLUX_MODEL, TEST_FILTER_LOCAL
 
 CONTAINS
 
@@ -31,7 +31,6 @@ INTEGER, INTENT(IN) :: NM
 INTEGER :: IZERO
 TYPE (MESH_TYPE), POINTER :: M
 
-IF (DO_EVACUATION) RETURN
 CALL POINT_TO_MESH(NM)
 M => MESHES(NM)
 
@@ -105,7 +104,6 @@ REAL(EB) :: UP,WP
 REAL(EB), POINTER, DIMENSION(:,:,:) :: UU=>NULL(),WW=>NULL(),RHOP=>NULL()
 REAL(EB), PARAMETER :: AA=2._EB
 
-IF (DO_EVACUATION) RETURN
 CALL POINT_TO_MESH(NM)
 
 SELECT CASE(RK_STAGE)
@@ -375,11 +373,14 @@ SUBROUTINE TWOD_SOBOROT_UMD(NM)
 ! Used for PERIODIC_TEST==12,13
 !-------------------------------------------------------------------------------
 INTEGER, INTENT(IN) :: NM
-INTEGER :: I,J,K,IOR,II,JJ,KK,IW,IC
+INTEGER :: I,J,K,IOR,II,JJ,KK,IW
 REAL(EB), PARAMETER :: USCAL = 1._EB     ! scale velocity (m/s)
 REAL(EB), PARAMETER :: WSCAL = 1._EB     ! scale velocity (m/s)
 REAL(EB), PARAMETER :: XCLOC = 0._EB     ! Center of vortex, x (m)
 REAL(EB), PARAMETER :: ZCLOC = 0._EB     ! Center of vortex, z (m)
+TYPE(BOUNDARY_COORD_TYPE), POINTER :: BC
+TYPE(BOUNDARY_PROP1_TYPE), POINTER :: B1
+TYPE(WALL_TYPE), POINTER :: WC
 
 CALL POINT_TO_MESH(NM)
 
@@ -404,63 +405,31 @@ DO K=-0,KBP1
    ENDDO
 ENDDO
 
-! fill ghost values for smokeview
-
-DO K=0,KBP1
-   DO J=0,JBP1
-      DO I=0,IBAR
-         IC = CELL_INDEX(I,J,K)
-         IF (IC==0) CYCLE
-         V_EDGE_X(IC) = 0.5_EB*(V(I,J,K)+V(I+1,J,K))
-         W_EDGE_X(IC) = 0.5_EB*(W(I,J,K)+W(I+1,J,K))
-      ENDDO
-   ENDDO
-ENDDO
-
-DO K=0,KBP1
-   DO J=0,JBAR
-      DO I=0,IBP1
-         IC = CELL_INDEX(I,J,K)
-         IF (IC==0) CYCLE
-         U_EDGE_Y(IC) = 0.5_EB*(U(I,J,K)+U(I,J+1,K))
-         W_EDGE_Y(IC) = 0.5_EB*(W(I,J,K)+W(I,J+1,K))
-      ENDDO
-   ENDDO
-ENDDO
-
-DO K=0,KBAR
-   DO J=0,JBP1
-      DO I=0,IBP1
-         IC = CELL_INDEX(I,J,K)
-         IF (IC==0) CYCLE
-         U_EDGE_Z(IC) = 0.5_EB*(U(I,J,K)+U(I,J,K+1))
-         V_EDGE_Z(IC) = 0.5_EB*(V(I,J,K)+V(I,J,K+1))
-      ENDDO
-   ENDDO
-ENDDO
-
 ! Set normal velocity on external and internal boundaries (follows divg)
 
 DO IW=1,N_EXTERNAL_WALL_CELLS+N_INTERNAL_WALL_CELLS
-   IOR = WALL(IW)%ONE_D%IOR
-   II  = WALL(IW)%ONE_D%II
-   JJ  = WALL(IW)%ONE_D%JJ
-   KK  = WALL(IW)%ONE_D%KK
+   WC => WALL(IW)
+   BC => BOUNDARY_COORD(WC%BC_INDEX)
+   B1 => BOUNDARY_PROP1(WC%B1_INDEX)
+   IOR = BC%IOR
+   II  = BC%II
+   JJ  = BC%JJ
+   KK  = BC%KK
    SELECT CASE(IOR)
       CASE( 1)
-         WALL(IW)%ONE_D%U_NORMAL_S = -U(II,JJ,KK)
+         B1%U_NORMAL_S = -U(II,JJ,KK)
       CASE(-1)
-         WALL(IW)%ONE_D%U_NORMAL_S =  U(II-1,JJ,KK)
+         B1%U_NORMAL_S =  U(II-1,JJ,KK)
       CASE( 2)
-         WALL(IW)%ONE_D%U_NORMAL_S = -V(II,JJ,KK)
+         B1%U_NORMAL_S = -V(II,JJ,KK)
       CASE(-2)
-         WALL(IW)%ONE_D%U_NORMAL_S =  V(II,JJ-1,KK)
+         B1%U_NORMAL_S =  V(II,JJ-1,KK)
       CASE( 3)
-         WALL(IW)%ONE_D%U_NORMAL_S = -W(II,JJ,KK)
+         B1%U_NORMAL_S = -W(II,JJ,KK)
       CASE(-3)
-         WALL(IW)%ONE_D%U_NORMAL_S =  W(II,JJ,KK-1)
+         B1%U_NORMAL_S =  W(II,JJ,KK-1)
    END SELECT
-   WALL(IW)%ONE_D%U_NORMAL = WALL(IW)%ONE_D%U_NORMAL_S
+   B1%U_NORMAL = B1%U_NORMAL_S
 ENDDO
 
 END SUBROUTINE TWOD_SOBOROT_UMD
@@ -505,7 +474,6 @@ REAL(EB), PARAMETER :: ALPHA = 6.0_EB ! See Lund, 1997 CTR briefs.
 ! is important because we overwrite pointers several times to conserve memory.
 ! *****************************************************************************
 
-IF (DO_EVACUATION) RETURN
 CALL POINT_TO_MESH(NM)
 
 IF (PREDICTOR) THEN
@@ -990,8 +958,6 @@ END SUBROUTINE FILL_EDGES
 
 SUBROUTINE TEST_FILTER(HAT,ORIG)
 
-! Tophat filter
-
 REAL(EB), INTENT(IN) :: ORIG(0:IBP1,0:JBP1,0:KBP1)
 REAL(EB), INTENT(OUT) :: HAT(0:IBP1,0:JBP1,0:KBP1)
 INTEGER :: I, J, K, L, M, N
@@ -1115,6 +1081,29 @@ END DO
 END SUBROUTINE TEST_FILTER
 
 
+SUBROUTINE TEST_FILTER_LOCAL(HAT,ORIG)
+
+! Local box filter of width 2*dx with trapazoid quadrature
+
+REAL(EB), INTENT(IN) :: ORIG(-1:1,-1:1,-1:1)
+REAL(EB), INTENT(OUT) :: HAT
+INTEGER :: I, J, K, L, M, N
+REAL(EB), PARAMETER :: K1DT(3)=(/1.0_EB,2.0_EB,1.0_EB/)
+REAL(EB), PARAMETER :: K3DT(-1:1,-1:1,-1:1)=RESHAPE((/(((K1DT(I)*K1DT(J)*K1DT(K)/64._EB,I=1,3),J=1,3),K=1,3)/),(/3,3,3/))
+
+! Apply 3x3x3 Kernel; this is faster than elementwise array multiplication.
+HAT = 0._EB
+DO N = -1,1
+   DO M = -1,1
+      DO L = -1,1
+         HAT = HAT + ORIG(L,M,N) * K3DT(L,M,N)
+      ENDDO
+   ENDDO
+ENDDO
+
+END SUBROUTINE TEST_FILTER_LOCAL
+
+
 SUBROUTINE WALE_VISCOSITY(NU_T,G_IJ,DELTA)
 
 ! Wall Adapting Local Eddy-viscosity (WALE)
@@ -1188,8 +1177,6 @@ REAL(EB), OPTIONAL, INTENT(OUT) :: U_FORCING_POINT,DUDY_FORCING_POINT
 
 REAL(EB), PARAMETER :: B=5.2_EB,BTILDE_MAX=9.5_EB ! BTILDE_ROUGH=8.5 set in GLOBAL_CONSTANTS; see Pope (2000) pp. 294,297,298
 REAL(EB), PARAMETER :: S0=1._EB,S1=5.83_EB,S2=30._EB ! approx piece-wise function for Fig. 7.24, Pope (2000) p. 297
-REAL(EB), PARAMETER :: Y1=5._EB
-REAL(EB), PARAMETER :: U1=5._EB
 REAL(EB), PARAMETER :: EPS=1.E-10_EB
 INTEGER, PARAMETER :: LAMINAR_SMOOTH=1,TURBULENT_SMOOTH=2,TURBULENT_ROUGH=3
 
@@ -1295,156 +1282,91 @@ ENDIF
 
 END SUBROUTINE WALL_MODEL
 
-!> \brief Wall model (stress and heat flux) for atmospheric boundary layer.
-!>
-!> \param SLIP_FACTOR
-!> \param HTC heat transfer coefficint (W/m2/K)
-!> \param U_STAR friction velocity (m/s), equivalent to U_TAU in WALL_MODEL
-!> \param L local Obukhov length (m)
-!> \param U_TANG resolved streamwise tangential velocity (m/s)
-!> \param Z_0 aerodynamic roughness length (m)
-!> \param Z_AGL height above ground level of cell center (m)
-!> \param ZC absolute elevation of cell center (m)
-!> \param TMP_G gas temperature (K)
-!> \param TMP_S surface temperature (K)
-!> \param MU_IN dynamic viscosity of gas cell (kg/m/s)
-!> \param RHO_IN density of first off-wall gas phase cell (kg/m3)
-!> \param CP_IN specific heat of first off-wall gas cell(J/kg/K)
-!> \param K_IN thermal conductivity of first off-wall gas cell (W/m/K)
 
-SUBROUTINE ABL_WALL_MODEL(SLIP_FACTOR,HTC,U_STAR,L,U_TANG,Z_0,Z_AGL,ZC,TMP_G,TMP_S,MU_IN,RHO_IN,CP_IN,K_IN)
+!> \brief Calculate the Nusselt number for natural/free convection
+!> \param NUSSELT Nusselt number
+!> \param RA Rayleigh number
+!> \param SURF_INDEX Indicator of the surface type
+!> \param SURF_GEOMETRY_INDEX Indicator of the surface geometry
+!> \param IOR Index of the surface orientation
+!> \param DELTA_TMP Temperature difference between gas and surface (K)
 
-USE PHYSICAL_FUNCTIONS, ONLY: GET_POTENTIAL_TEMPERATURE, MONIN_OBUKHOV_STABILITY_CORRECTIONS
+SUBROUTINE NATURAL_CONVECTION_MODEL(NUSSELT,RA,SURF_INDEX,SURF_GEOMETRY_INDEX,IOR,DELTA_TMP)
 
-REAL(EB), INTENT(OUT) :: SLIP_FACTOR,HTC,U_STAR,L
-REAL(EB), INTENT(IN) :: U_TANG,Z_0,Z_AGL,ZC,TMP_G,TMP_S,MU_IN,RHO_IN,CP_IN,K_IN
-REAL(EB) :: KAPPA,TAU_W,NAT_LOG_ZPLUS,Q_DOT_PP_S,PSI_H,PSI_M,THETA_G,THETA_S,DTHETA,DUDZ,DZ,L_OLD
-INTEGER :: ABL_TYPE,COUNT
-INTEGER, PARAMETER :: NEUTRAL_ABL=1,STABLE_ABL=2,UNSTABLE_ABL=3
-REAL(EB), PARAMETER :: EPS_Q=1.E-6_EB,EPS_L=1.E-3_EB
-
-! References:
-!
-! Stoll, R., Porte-Agel, F. (2008) Large-Eddy Simulation of the Stable Atmospheric
-! Boundary Layer using Dynamic Models with Different Averaging Schemes. Boundary-Layer
-! Meteorology, 126:1-28.
-
-! initial guesses
-
-SLIP_FACTOR = -1._EB
-TAU_W = MU_IN/RHO_IN*ABS(U_TANG)/Z_AGL              ! wall stress, actually tau_w/rho (m2/s2)
-U_STAR = SQRT(TAU_W)                                ! friction velocity (m/s)
-Q_DOT_PP_S = MU_IN/RHO_IN*RPR*(TMP_S-TMP_G)/Z_AGL   ! heat flux at the surface (m/s * K)
-L = 0._EB                                           ! temporary value of Obukhov length (m), no physical meaning
-
-IF (ABS(U_TANG)<EPS_Q) THEN
-   ! quiescent boundary layer
-   HTC = MAX(1.52_EB*ABS(TMP_S-TMP_G)**ONTH, K_IN/Z_AGL)
-   RETURN
-ENDIF
-
-NAT_LOG_ZPLUS = LOG(Z_AGL/Z_0)
-KAPPA = VON_KARMAN_CONSTANT
-
-L_OLD = HUGE(1._EB)
-COUNT = 0
-ABL_LOOP: DO WHILE (ABS(L-L_OLD)>EPS_L)
-   COUNT = COUNT + 1
-   L_OLD = L
-   ABL_TYPE = NEUTRAL_ABL
-   IF (Q_DOT_PP_S<-EPS_Q) THEN
-      ABL_TYPE = STABLE_ABL
-   ELSEIF (Q_DOT_PP_S>EPS_Q) THEN
-      ABL_TYPE = UNSTABLE_ABL
-   ENDIF
-   SELECT CASE (ABL_TYPE)
-      CASE (NEUTRAL_ABL)
-         U_STAR = ABS(U_TANG)*KAPPA/NAT_LOG_ZPLUS
-         HTC = K_IN/Z_AGL
-         Q_DOT_PP_S = HTC*(TMP_S-TMP_G)
-         L = 0._EB
-      CASE (STABLE_ABL,UNSTABLE_ABL)
-         THETA_G = GET_POTENTIAL_TEMPERATURE(TMP_G,ZC)
-         THETA_S = GET_POTENTIAL_TEMPERATURE(TMP_S,ZC-Z_AGL)
-         DTHETA = THETA_S-THETA_G
-         L = -U_STAR**3*THETA_G/(KAPPA*GRAV*Q_DOT_PP_S)
-         CALL MONIN_OBUKHOV_STABILITY_CORRECTIONS(PSI_M,PSI_H,Z_AGL,L)
-         IF (NAT_LOG_ZPLUS-PSI_M>TWO_EPSILON_EB) U_STAR = ABS(U_TANG)*KAPPA/(NAT_LOG_ZPLUS-PSI_M)
-         IF (NAT_LOG_ZPLUS-PSI_H>TWO_EPSILON_EB) Q_DOT_PP_S = DTHETA*U_STAR*KAPPA/(NAT_LOG_ZPLUS-PSI_H)
-         HTC = RHO_IN*CP_IN*Q_DOT_PP_S/(TMP_S-TMP_G)
-   END SELECT
-   IF (COUNT>10) THEN
-      ! punt and get out
-      SLIP_FACTOR = -1._EB
-      HTC = K_IN/Z_AGL
-      TAU_W = MU_IN/RHO_IN*ABS(U_TANG)/Z_AGL
-      U_STAR = SQRT(TAU_W)
-      L = 0._EB
-      RETURN
-   ENDIF
-ENDDO ABL_LOOP
-
-HTC = MAX(HTC,K_IN/Z_AGL)
-DUDZ = U_STAR/(KAPPA*Z_AGL) ! slip factor is based on gradient at cell center position
-DZ = 2._EB*Z_AGL
-SLIP_FACTOR = MAX(-1._EB,MIN(1._EB,1._EB-DUDZ*DZ/(ABS(U_TANG)+TWO_EPSILON_EB))) ! -1.0 <= SLIP_FACTOR <= 1.0
-
-END SUBROUTINE ABL_WALL_MODEL
-
-
-SUBROUTINE NATURAL_CONVECTION_MODEL(H_NATURAL,DELTA_TMP,C_VERTICAL,C_HORIZONTAL,SURF_GEOMETRY_INDEX,IOR,K_G,DN)
-
-REAL(EB), INTENT(OUT) :: H_NATURAL
-REAL(EB), INTENT(IN) :: DELTA_TMP,C_VERTICAL,C_HORIZONTAL,K_G,DN
-INTEGER, INTENT(IN) :: SURF_GEOMETRY_INDEX,IOR
-
-! Calculate the HTC for natural/free convection (Holman, 1990, Table 7-2)
+REAL(EB), INTENT(OUT) :: NUSSELT
+REAL(EB), INTENT(IN) :: RA,DELTA_TMP
+INTEGER, INTENT(IN) :: SURF_INDEX,SURF_GEOMETRY_INDEX,IOR
 
 SELECT CASE(SURF_GEOMETRY_INDEX)
    CASE (SURF_CARTESIAN)
       SELECT CASE(ABS(IOR))
          CASE(0:2)
-            H_NATURAL = C_VERTICAL*ABS(DELTA_TMP)**ONTH
+            NUSSELT = (0.825_EB + 0.324_EB*RA**ONSI)**2  ! Incropera and DeWitt, 7th edition, Eq. 9.26
          CASE(3)
-            H_NATURAL = C_HORIZONTAL*ABS(DELTA_TMP)**ONTH
+            IF ((IOR==3.AND.DELTA_TMP<0._EB) .OR. (IOR==-3.AND.DELTA_TMP>=0._EB)) THEN
+               IF (RA<1.E7_EB) THEN
+                  NUSSELT = 0.54_EB*RA**0.25_EB  ! Incropera and DeWitt, 7th edition, Eq. 9.30
+               ELSE
+                  NUSSELT = 0.15_EB*RA**ONTH     ! Incropera and DeWitt, 7th edition, Eq. 9.31
+               ENDIF
+            ELSE
+               NUSSELT = 0.52_EB*RA**0.2     ! Incropera and DeWitt, 7th edition, Eq. 9.32
+            ENDIF
       END SELECT
-      H_NATURAL = MAX(H_NATURAL,2._EB*K_G/DN)
-
-   CASE (SURF_CYLINDRICAL)
-      H_NATURAL = C_VERTICAL*ABS(DELTA_TMP)**ONTH
-
-   CASE (SURF_SPHERICAL) ! It is assumed that the forced HTC represents natural convection as well
-      H_NATURAL = 0._EB
+   CASE (SURF_CYLINDRICAL)  ! Simplification of Eq. 9.34, Incropera and DeWitt, 7th edition
+      IF (SURFACE(SURF_INDEX)%HORIZONTAL) THEN
+         NUSSELT = (0.6_EB + 0.321_EB*RA**ONSI)**2   ! Incropera and DeWitt, 7th edition, Eq. 9.34
+      ELSE
+         NUSSELT = (0.825_EB + 0.324_EB*RA**ONSI)**2 ! Incropera and DeWitt, 7th edition, Eq. 9.26
+      ENDIF
+   CASE (SURF_SPHERICAL)
+      NUSSELT = 2._EB + 0.454_EB*RA**0.25_EB  ! Incropera and DeWitt, 7th edition, Eq. 9.35
 END SELECT
 
 END SUBROUTINE NATURAL_CONVECTION_MODEL
 
 
-SUBROUTINE FORCED_CONVECTION_MODEL(H_FORCED,RE,K_G,PR_ONTH_IN,CONV_LENGTH,SURF_GEOMETRY_INDEX)
+!> \brief Calculate the heat transfer coefficient for forced convection
+!> \param NUSSELT Nusselt number
+!> \param RE Reynolds number
+!> \param PR_ONTH_IN Prandtl number to the 1/3 power
+!> \param SURF_GEOMETRY_INDEX Indicator of the surface geometry
+!> \param NUSSELT_C0 Constant in Nusselt number correlation
+!> \param NUSSELT_C1 Constant in Nusselt number correlation
+!> \param NUSSELT_C2 Constant in Nusselt number correlation
+!> \param NUSSELT_M Exponent in Nusselt number correlation
 
-REAL(EB), INTENT(OUT) :: H_FORCED
-REAL(EB), INTENT(IN) :: RE,K_G,CONV_LENGTH,PR_ONTH_IN
+SUBROUTINE FORCED_CONVECTION_MODEL(NUSSELT,RE,PR_ONTH_IN,SURF_GEOMETRY_INDEX,NUSSELT_C0,NUSSELT_C1,NUSSELT_C2,NUSSELT_M)
+
+REAL(EB), INTENT(OUT) :: NUSSELT
+REAL(EB), INTENT(IN) :: RE,PR_ONTH_IN
+REAL(EB), INTENT(IN), OPTIONAL :: NUSSELT_C0,NUSSELT_C1,NUSSELT_C2,NUSSELT_M
 INTEGER, INTENT(IN) :: SURF_GEOMETRY_INDEX
-REAL(EB) :: NUSSELT
 
-SELECT CASE(SURF_GEOMETRY_INDEX)
-   CASE (SURF_CARTESIAN)
-      ! Incropera and DeWitt, 3rd, 1990, Eq. 7.44
-      NUSSELT = 0.037_EB*RE**0.8_EB*PR_ONTH_IN
-   CASE (SURF_CYLINDRICAL)
-      ! Incropera and DeWitt, 3rd, 1990, Eq. 7.55
-      IF (RE >= 40._EB) THEN
-         NUSSELT = 0.683_EB*RE**0.466_EB*PR_ONTH_IN
-      ELSEIF (RE >= 4._EB) THEN
-         NUSSELT = 0.911_EB*RE**0.385_EB*PR_ONTH_IN
-      ELSE
-         NUSSELT = 0.989_EB*RE**0.330_EB*PR_ONTH_IN
-      ENDIF
-   CASE (SURF_SPHERICAL)
-      ! Incropera and DeWitt, 3rd, 1990, Eq. 7.59
-      NUSSELT = 2._EB + 0.6_EB*SQRT(RE)*PR_ONTH_IN
-END SELECT
-H_FORCED = MAX(1._EB,NUSSELT)*K_G/CONV_LENGTH
+
+IF (PRESENT(NUSSELT_C0)) THEN ! User has defined a custom Nusselt correlation
+   NUSSELT = NUSSELT_C0+(NUSSELT_C1*RE**NUSSELT_M-NUSSELT_C2)*PR_ONTH_IN
+ELSE
+   SELECT CASE(SURF_GEOMETRY_INDEX)
+      CASE (SURF_CARTESIAN)
+         NUSSELT = 0.0296_EB*RE**0.8_EB*PR_ONTH_IN  ! Incropera and DeWitt, 7th, Eq. 7.36, Table 7.7
+      CASE (SURF_CYLINDRICAL)
+         ! Incropera and DeWitt, 7th, Eq. 7.52
+         IF (RE >= 40000._EB) THEN
+            NUSSELT = 0.027_EB*RE**0.805_EB*PR_ONTH_IN
+         ELSEIF (RE >= 4000._EB) THEN
+            NUSSELT = 0.193_EB*RE**0.618_EB*PR_ONTH_IN
+         ELSEIF (RE >= 40._EB) THEN
+            NUSSELT = 0.683_EB*RE**0.466_EB*PR_ONTH_IN
+         ELSEIF (RE >= 4._EB) THEN
+            NUSSELT = 0.911_EB*RE**0.385_EB*PR_ONTH_IN
+         ELSE
+            NUSSELT = 0.989_EB*RE**0.330_EB*PR_ONTH_IN
+         ENDIF
+      CASE (SURF_SPHERICAL)
+         NUSSELT = 2._EB + 0.6_EB*SQRT(RE)*PR_ONTH_IN  ! Incropera and DeWitt, 7th, Eq. 7.57
+   END SELECT
+ENDIF
 
 END SUBROUTINE FORCED_CONVECTION_MODEL
 
@@ -1520,7 +1442,7 @@ ENDDO RAYLEIGH_LOOP
 END SUBROUTINE RAYLEIGH_HEAT_FLUX_MODEL
 
 
-SUBROUTINE RAYLEIGH_MASS_FLUX_MODEL(MFLUX,DZ,Y_W,Y_G,D_G,RHO_G,MU_G)
+SUBROUTINE RAYLEIGH_MASS_FLUX_MODEL(H_MASS,Z_STAR,DZ,B_NUMBER,D_FILM,RHO_FILM,MU_FILM)
 
 !!!!! EXPERIMENTAL !!!!!
 
@@ -1529,9 +1451,9 @@ SUBROUTINE RAYLEIGH_MASS_FLUX_MODEL(MFLUX,DZ,Y_W,Y_G,D_G,RHO_G,MU_G)
 ! The formulation is based on the discussion of natural convection systems in
 ! J.P. Holman, Heat Transfer, 7th Ed., McGraw-Hill, 1990, p. 346.
 
-REAL(EB), INTENT(OUT) :: MFLUX
-REAL(EB), INTENT(IN) :: DZ,Y_W,Y_G,D_G,RHO_G,MU_G
-REAL(EB) :: SHERWOOD,ZC,NU_G,D_STAR,MFLUX_OLD,ERROR,LN_B,D_STAR_FAC,H,Z_STAR
+REAL(EB), INTENT(OUT) :: H_MASS,Z_STAR
+REAL(EB), INTENT(IN) :: DZ,B_NUMBER,D_FILM,RHO_FILM,MU_FILM
+REAL(EB) :: SHERWOOD,ZC,NU_FILM,D_STAR,MFLUX_OLD,ERROR,D_STAR_FAC,MFLUX
 INTEGER :: ITER
 INTEGER, PARAMETER :: MAX_ITER=10
 ! C_L = Z_L**(-0.8_EB)
@@ -1539,24 +1461,22 @@ INTEGER, PARAMETER :: MAX_ITER=10
 REAL(EB), PARAMETER :: Z_L = 3.2_EB, Z_T=17._EB
 REAL(EB), PARAMETER :: C_L = 3.2_EB**(-0.8_EB), C_T = C_L*17._EB**(-0.2_EB)
 
-IF (Y_G >= Y_W) THEN
+IF (B_NUMBER<TWO_EPSILON_EB) THEN
    MFLUX = 0._EB
    RETURN
 ENDIF
 
-LN_B = LOG(1._EB + (Y_W - Y_G)/(1 - Y_W + 1.E-8_EB))
-
 ZC = 0.5_EB*DZ
-NU_G = MU_G/RHO_G
-D_STAR_FAC = RHO_G*D_G**2*NU_G/GRAV
+NU_FILM = MU_FILM/RHO_FILM
+D_STAR_FAC = RHO_FILM*D_FILM**2*NU_FILM/GRAV
 
 ! Step 1: assume a mass transfer coefficient
 
-H = D_G/ZC ! initial guess
+H_MASS = D_FILM/ZC ! initial guess
 
 ! Step 2: compute initial MFLUX
 
-MFLUX = RHO_G*H*LN_B
+MFLUX = RHO_FILM*H_MASS*LOG(1._EB + B_NUMBER)
 
 RAYLEIGH_LOOP: DO ITER=1,MAX_ITER
 
@@ -1580,9 +1500,9 @@ RAYLEIGH_LOOP: DO ITER=1,MAX_ITER
 
    ! Step 6: update mass transfer coefficient
 
-   H = SHERWOOD*D_G/ZC
+   H_MASS = SHERWOOD*D_FILM/ZC
    MFLUX_OLD = MFLUX
-   MFLUX = RHO_G*H*LN_B
+   MFLUX = RHO_FILM*H_MASS*LOG(1._EB + B_NUMBER)
 
    ERROR = ABS(MFLUX-MFLUX_OLD)/MAX(MFLUX_OLD,TWO_EPSILON_EB)
 
@@ -1591,66 +1511,6 @@ RAYLEIGH_LOOP: DO ITER=1,MAX_ITER
 ENDDO RAYLEIGH_LOOP
 
 END SUBROUTINE RAYLEIGH_MASS_FLUX_MODEL
-
-
-SUBROUTINE YUAN_HEAT_FLUX_MODEL(H,Y_STAR,DY,TMP_W,TMP_G,K_G,RHO_G,CP_G)
-
-!!!!! EXPERIMENTAL !!!!!
-
-! This model is very similar to RAYLEIGH_HEAT_FLUX_MODEL
-!
-! X. Yuan, A. Moser, P. Suter. Wall functions for numerical simulation of turbulent
-! natural convection along vertical plates. Int. J. Heat Mass Transfer, Vol. 36,
-! No. 18 pp. 4477-4485, 1993.
-
-REAL(EB), INTENT(OUT) :: H,Y_STAR
-REAL(EB), INTENT(IN) :: DY,TMP_W,TMP_G,K_G,RHO_G,CP_G
-REAL(EB) :: T_STAR,Q,YC,TQ,UQ,ALPHA,THETA,GAMMA,Q_OLD,ERROR
-INTEGER :: ITER
-INTEGER, PARAMETER :: MAX_ITER=10
-
-IF (ABS(TMP_W-TMP_G)<TWO_EPSILON_EB) THEN
-   H = 0._EB
-   Y_STAR = 0._EB
-   RETURN
-ENDIF
-
-YC = 0.5_EB*DY
-ALPHA = K_G/(RHO_G*CP_G)
-THETA = GRAV/TMP_W*ALPHA*(RHO_G*CP_G)**3
-GAMMA = GRAV/TMP_W*ALPHA/(RHO_G*CP_G)
-
-H = K_G/YC ! initial guess
-Q = H*ABS(TMP_W-TMP_G)
-
-YUAN_LOOP: DO ITER=1,MAX_ITER
-
-   UQ = ( Q / GAMMA )**0.25_EB
-
-   Y_STAR = YC*UQ/ALPHA ! Yuan et al. Eq. (15)
-
-   ! Yuan et al. Eqs. (22)-(24)
-   IF (Y_STAR<=1._EB) THEN
-      T_STAR = Y_STAR
-   ELSEIF (Y_STAR>1._EB .AND. Y_STAR<=100._EB) THEN
-      T_STAR = 1._EB + 1.36_EB*LOG(Y_STAR) - 0.135_EB*LOG(Y_STAR)**2
-   ELSE
-      T_STAR = 4.4_EB ! curvefit for AIR
-   ENDIF
-
-   TQ = ABS(TMP_W-TMP_G)/MAX(T_STAR,TWO_EPSILON_EB)
-   Q_OLD = Q
-   Q = (THETA*TQ**4)**ONTH
-
-   ERROR = ABS(Q-Q_OLD)/MAX(Q_OLD,TWO_EPSILON_EB)
-
-   IF (ERROR<0.001_EB) EXIT YUAN_LOOP
-
-ENDDO YUAN_LOOP
-
-H = MAX( K_G/YC, Q/ABS(TMP_W-TMP_G) )
-
-END SUBROUTINE YUAN_HEAT_FLUX_MODEL
 
 
 SUBROUTINE LOGLAW_HEAT_FLUX_MODEL(H,YPLUS,U_TAU,K_G,RHO_G,CP_G,MU_G)
@@ -1965,7 +1825,6 @@ TYPE(VENTS_TYPE), POINTER :: VT=>NULL()
 INTEGER :: NE,NV,IERROR
 REAL(EB), POINTER, DIMENSION(:,:) :: A_IJ=>NULL(),R_IJ=>NULL()
 
-IF (DO_EVACUATION) RETURN
 VENT_LOOP: DO NV=1,MESHES(NM)%N_VENT
    VT => MESHES(NM)%VENTS(NV)
    IF (VT%N_EDDY==0) CYCLE VENT_LOOP
@@ -2028,8 +1887,7 @@ INTEGER :: NE,NV,II,JJ,KK,IERROR
 TYPE(VENTS_TYPE), POINTER :: VT=>NULL()
 TYPE(SURFACE_TYPE), POINTER :: SF=>NULL()
 REAL(EB) :: XX,YY,ZZ,SHAPE_FACTOR,VOLUME_WEIGHTING_FACTOR(3),EDDY_VOLUME(3),PROFILE_FACTOR,RAMP_T,TSI,&
-            VEL_NORMAL,VEL_TANG_1,VEL_TANG_2,DUMMY
-REAL(EB), PARAMETER :: EPSDX=1.E-10_EB
+            VEL_NORMAL,VEL_TANG_1,VEL_TANG_2,Z_WGT
 INTEGER, PARAMETER :: SHAPE_CODE=1 ! 1=tent, 2=tophat
 
 ! Reference:
@@ -2039,7 +1897,6 @@ INTEGER, PARAMETER :: SHAPE_CODE=1 ! 1=tent, 2=tophat
 !
 ! See Chapter 4: The Synthetic Eddy Method
 
-IF (DO_EVACUATION) RETURN
 CALL POINT_TO_MESH(NM)
 
 VENT_LOOP: DO NV=1,N_VENT
@@ -2051,32 +1908,13 @@ VENT_LOOP: DO NV=1,N_VENT
    VT%W_EDDY = 0._EB
    SF => SURFACE(VT%SURF_INDEX)
 
-   IF ( VT%BOUNDARY_TYPE==OPEN_BOUNDARY .AND. OPEN_WIND_BOUNDARY ) THEN
-
-      SELECT CASE(ABS(VT%IOR))
-         CASE(1)
-            RAMP_T = EVALUATE_RAMP(T,DUMMY,I_RAMP_U0_T)
-            VEL_NORMAL = -U0*RAMP_T
-            VEL_TANG_1 =  V0*RAMP_T
-            VEL_TANG_2 =  W0*RAMP_T
-         CASE(2)
-            RAMP_T = EVALUATE_RAMP(T,DUMMY,I_RAMP_V0_T)
-            VEL_NORMAL = -V0*RAMP_T
-            VEL_TANG_1 =  U0*RAMP_T
-            VEL_TANG_2 =  W0*RAMP_T
-         CASE(3)
-            RAMP_T = EVALUATE_RAMP(T,DUMMY,I_RAMP_W0_T)
-            VEL_NORMAL = -W0*RAMP_T
-            VEL_TANG_1 =  U0*RAMP_T
-            VEL_TANG_2 =  V0*RAMP_T
-      END SELECT
-   ELSE
-      IF (ABS(SF%T_IGN-T_BEGIN)<=SPACING(SF%T_IGN) .AND. SF%RAMP_INDEX(TIME_VELO)>=1) THEN
+   IF ( .NOT. (VT%BOUNDARY_TYPE==OPEN_BOUNDARY .AND. OPEN_WIND_BOUNDARY)) THEN
+      IF (ABS(SF%T_IGN-T_BEGIN)<=SPACING(SF%T_IGN) .AND. SF%RAMP(TIME_VELO)%INDEX>=1) THEN
          TSI = T
       ELSE
          TSI=T-SF%T_IGN
       ENDIF
-      RAMP_T = EVALUATE_RAMP(TSI,SF%TAU(TIME_VELO),SF%RAMP_INDEX(TIME_VELO))
+      RAMP_T = EVALUATE_RAMP(TSI,SF%RAMP(TIME_VELO)%INDEX,TAU=SF%RAMP(TIME_VELO)%TAU)
       VEL_NORMAL = SF%VEL     *RAMP_T
       VEL_TANG_1 = SF%VEL_T(1)*RAMP_T
       VEL_TANG_2 = SF%VEL_T(2)*RAMP_T
@@ -2085,9 +1923,21 @@ VENT_LOOP: DO NV=1,N_VENT
    IOR_SELECT: SELECT CASE(ABS(VT%IOR))
       CASE(1)
          EDDY_LOOP_1: DO NE=1,VT%N_EDDY ! loop over eddies
+            
+            ! determine advection velocity based on eddy position
             PROFILE_FACTOR = 1._EB
-            IF (I_RAMP_U0_Z>0)                PROFILE_FACTOR = EVALUATE_RAMP(VT%Z_EDDY(NE),DUMMY,I_RAMP_U0_Z)
-            IF (SF%RAMP_INDEX(VELO_PROF_Z)>0) PROFILE_FACTOR = EVALUATE_RAMP(VT%Z_EDDY(NE),DUMMY,SF%RAMP_INDEX(VELO_PROF_Z))
+            IF ( VT%BOUNDARY_TYPE==OPEN_BOUNDARY .AND. OPEN_WIND_BOUNDARY ) THEN
+               ZZ=CELLSK(MIN(CELLSK_HI,MAX(CELLSK_LO,FLOOR((VT%Z_EDDY(NE)-ZS)*RDZINT))))
+               KK=FLOOR(ZZ+1._EB)
+               Z_WGT = ZZ+0.5_EB-FLOOR(ZZ+0.5_EB)
+               IF (Z_WGT>0.5_EB) KK = KK - 1
+               VEL_NORMAL = -(U_WIND(KK)*(1.0-Z_WGT)+U_WIND(KK+1)*Z_WGT)
+               VEL_TANG_1 = (V_WIND(KK)*(1.0-Z_WGT)+V_WIND(KK+1)*Z_WGT)
+               VEL_TANG_2 = (W_WIND(KK)*(1.0-Z_WGT)+W_WIND(KK+1)*Z_WGT)
+            ELSEIF (SF%RAMP(VELO_PROF_Z)%INDEX>0) THEN
+               PROFILE_FACTOR = EVALUATE_RAMP(VT%Z_EDDY(NE),SF%RAMP(VELO_PROF_Z)%INDEX)
+            ENDIF
+
             VT%X_EDDY(NE) = VT%X_EDDY(NE) - DT*VEL_NORMAL*PROFILE_FACTOR*SIGN(1._EB,REAL(VT%IOR,EB))
             VT%Y_EDDY(NE) = VT%Y_EDDY(NE) + DT*VEL_TANG_1*PROFILE_FACTOR
             VT%Z_EDDY(NE) = VT%Z_EDDY(NE) + DT*VEL_TANG_2*PROFILE_FACTOR
@@ -2117,9 +1967,21 @@ VENT_LOOP: DO NV=1,N_VENT
          ENDDO EDDY_LOOP_1
       CASE(2)
          EDDY_LOOP_2: DO NE=1,VT%N_EDDY
+
+            ! determine advection velocity based on eddy position
             PROFILE_FACTOR = 1._EB
-            IF (I_RAMP_V0_Z>0)                PROFILE_FACTOR = EVALUATE_RAMP(VT%Z_EDDY(NE),DUMMY,I_RAMP_V0_Z)
-            IF (SF%RAMP_INDEX(VELO_PROF_Z)>0) PROFILE_FACTOR = EVALUATE_RAMP(VT%Z_EDDY(NE),DUMMY,SF%RAMP_INDEX(VELO_PROF_Z))
+            IF ( VT%BOUNDARY_TYPE==OPEN_BOUNDARY .AND. OPEN_WIND_BOUNDARY ) THEN
+               ZZ=CELLSK(MIN(CELLSK_HI,MAX(CELLSK_LO,FLOOR((VT%Z_EDDY(NE)-ZS)*RDZINT))))
+               KK=FLOOR(ZZ+1._EB)
+               Z_WGT = ZZ+0.5_EB-FLOOR(ZZ+0.5_EB)
+               IF (Z_WGT>0.5_EB) KK = KK - 1
+               VEL_TANG_1 = (U_WIND(KK)*(1.0-Z_WGT)+U_WIND(KK+1)*Z_WGT)
+               VEL_NORMAL = -(V_WIND(KK)*(1.0-Z_WGT)+V_WIND(KK+1)*Z_WGT)
+               VEL_TANG_2 = (W_WIND(KK)*(1.0-Z_WGT)+W_WIND(KK+1)*Z_WGT)
+            ELSEIF (SF%RAMP(VELO_PROF_Z)%INDEX>0) THEN 
+               PROFILE_FACTOR = EVALUATE_RAMP(VT%Z_EDDY(NE),SF%RAMP(VELO_PROF_Z)%INDEX)
+            ENDIF
+
             VT%X_EDDY(NE) = VT%X_EDDY(NE) + DT*VEL_TANG_1*PROFILE_FACTOR
             VT%Y_EDDY(NE) = VT%Y_EDDY(NE) - DT*VEL_NORMAL*PROFILE_FACTOR*SIGN(1._EB,REAL(VT%IOR,EB))
             VT%Z_EDDY(NE) = VT%Z_EDDY(NE) + DT*VEL_TANG_2*PROFILE_FACTOR
@@ -2149,9 +2011,21 @@ VENT_LOOP: DO NV=1,N_VENT
          ENDDO EDDY_LOOP_2
       CASE(3)
          EDDY_LOOP_3: DO NE=1,VT%N_EDDY
+
+            ! determine advection velocity based on eddy position
             PROFILE_FACTOR = 1._EB
-            IF (I_RAMP_W0_Z>0)                PROFILE_FACTOR = EVALUATE_RAMP(VT%Z_EDDY(NE),DUMMY,I_RAMP_W0_Z)
-            IF (SF%RAMP_INDEX(VELO_PROF_Z)>0) PROFILE_FACTOR = EVALUATE_RAMP(VT%Z_EDDY(NE),DUMMY,SF%RAMP_INDEX(VELO_PROF_Z))
+            IF ( VT%BOUNDARY_TYPE==OPEN_BOUNDARY .AND. OPEN_WIND_BOUNDARY ) THEN
+               ZZ=CELLSK(MIN(CELLSK_HI,MAX(CELLSK_LO,FLOOR((VT%Z_EDDY(NE)-ZS)*RDZINT))))
+               KK=FLOOR(ZZ+1._EB)
+               Z_WGT = ZZ+0.5_EB-FLOOR(ZZ+0.5_EB)
+               IF (Z_WGT>0.5_EB) KK = KK - 1
+               VEL_TANG_1 = (U_WIND(KK)*(1.0-Z_WGT)+U_WIND(KK+1)*Z_WGT)
+               VEL_TANG_2 = (V_WIND(KK)*(1.0-Z_WGT)+V_WIND(KK+1)*Z_WGT)
+               VEL_NORMAL = -(W_WIND(KK)*(1.0-Z_WGT)+W_WIND(KK+1)*Z_WGT)
+            ELSEIF (SF%RAMP(VELO_PROF_Z)%INDEX>0) THEN
+               PROFILE_FACTOR = EVALUATE_RAMP(VT%Z_EDDY(NE),SF%RAMP(VELO_PROF_Z)%INDEX)
+            ENDIF
+            
             VT%X_EDDY(NE) = VT%X_EDDY(NE) + DT*VEL_TANG_1*PROFILE_FACTOR
             VT%Y_EDDY(NE) = VT%Y_EDDY(NE) + DT*VEL_TANG_2*PROFILE_FACTOR
             VT%Z_EDDY(NE) = VT%Z_EDDY(NE) - DT*VEL_NORMAL*PROFILE_FACTOR*SIGN(1._EB,REAL(VT%IOR,EB))
@@ -2298,6 +2172,7 @@ CHARACTER(80), INTENT(IN) :: FN_ISO
 TYPE (MESH_TYPE), POINTER :: M=>NULL()
 TYPE (MESH_TYPE), POINTER :: M2=>NULL()
 TYPE (WALL_TYPE), POINTER :: WC=>NULL()
+TYPE (BOUNDARY_COORD_TYPE), POINTER :: BC=>NULL()
 TYPE (EXTERNAL_WALL_TYPE), POINTER :: EWC=>NULL()
 
 IF (NM>1) RETURN
@@ -2369,7 +2244,6 @@ DO IM = 1,NMESHES
    M%W=M%W-MEANW
 ENDDO
 
-
 ! handle boundaries and I=0,J=0,K=0 cells for each mesh
 
 MESH_LOOP_2: DO IM = 1,NMESHES
@@ -2379,11 +2253,12 @@ MESH_LOOP_2: DO IM = 1,NMESHES
    WALL_LOOP: DO IW=1,M%N_EXTERNAL_WALL_CELLS
 
       WC=>M%WALL(IW)
+      BC=>M%BOUNDARY_COORD(WC%BC_INDEX)
       EWC=>M%EXTERNAL_WALL(IW)
-      IOR = WC%ONE_D%IOR
-      II = WC%ONE_D%II
-      JJ = WC%ONE_D%JJ
-      KK = WC%ONE_D%KK
+      IOR = BC%IOR
+      II  = BC%II
+      JJ  = BC%JJ
+      KK  = BC%KK
 
       ! assumes no refinement
       IIO = EWC%IIO_MIN
@@ -3420,7 +3295,6 @@ END SUBROUTINE fourier_f2003
 END MODULE TURBULENCE
 
 
-
 MODULE MANUFACTURED_SOLUTIONS
 
 USE PRECISION_PARAMETERS
@@ -3449,7 +3323,7 @@ USE PHYSICAL_FUNCTIONS, ONLY: GET_SPECIFIC_GAS_CONSTANT
 INTEGER, INTENT(IN) :: NM
 INTEGER :: I,J,K
 REAL(EB) :: ZZ_GET(1:N_TRACKED_SPECIES)
-REAL(EB), PARAMETER :: L=2._EB, X0=0._EB, SIGMA=0.1_EB
+REAL(EB), PARAMETER :: L=2._EB
 REAL(EB), PARAMETER :: GAS_CONSTANT=8314.472_EB
 
 ! set up problem parameters
@@ -3462,7 +3336,6 @@ CALL POINT_TO_MESH(NM)
 DO K=0,KBP1
    DO J=0,JBP1
       DO I=0,IBP1
-         !ZZ(I,J,K,2) = EXP(-.5_EB*(XC(I)-X0)**2/SIGMA**2)
          ZZ(I,J,K,2) = 0.5_EB*(1._EB+SIN(2._EB*PI*XC(I)/L))
          ZZ(I,J,K,1) = 1._EB - ZZ(I,J,K,2)
          ZZ_GET(1:2) = ZZ(I,J,K,1:2)
