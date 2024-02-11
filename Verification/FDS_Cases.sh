@@ -257,6 +257,7 @@ $QFDS -p 8 -d Heat_Transfer ht3d_energy_conservation_5.fds
 $QFDS -p 8 -d Heat_Transfer ht3d_energy_conservation_6.fds
 $QFDS -p 8 -d Heat_Transfer ht3d_energy_conservation_7.fds
 $QFDS -p 36 -d Heat_Transfer ht3d_energy_conservation_8.fds
+$QFDS -p 8 -d Heat_Transfer ht3d_energy_conservation_9.fds
 $QFDS -d Heat_Transfer ht3d_ibeam.fds
 $QFDS -d Heat_Transfer ht3d_mass_conservation.fds
 $QFDS -d Heat_Transfer ht3d_mass_conservation_2.fds
@@ -381,6 +382,7 @@ $QFDS -d Pyrolysis cable_701_jacket_mcc.fds
 $QFDS -d Pyrolysis cell_burn_away.fds
 $QFDS -d Pyrolysis cone_demo.fds
 $QFDS -d Pyrolysis cone_demo_2.fds
+$QFDS -d Pyrolysis cone_demo_3.fds
 $QFDS -d Pyrolysis birch_tga_1step_2.fds
 $QFDS -d Pyrolysis birch_tga_1step_20.fds
 $QFDS -d Pyrolysis enthalpy.fds

@@ -56,9 +56,12 @@ INTEGER, PARAMETER :: THERMALLY_THICK=3          !< Flag for SF\%THERMAL_BC_INDE
 INTEGER, PARAMETER :: INFLOW_OUTFLOW=4           !< Flag for SF\%THERMAL_BC_INDEX: OPEN boundary
 INTEGER, PARAMETER :: INTERPOLATED_BC=6          !< Flag for SF\%THERMAL_BC_INDEX: Interface between two meshes
 
-INTEGER, PARAMETER :: DEFAULT_HTC_MODEL=0                  !< Flag for SF\%HEAT_TRANSFER_MODEL
-INTEGER, PARAMETER :: LOGLAW_HTC_MODEL=1                   !< Flag for SF\%HEAT_TRANSFER_MODEL
-INTEGER, PARAMETER :: RAYLEIGH_HTC_MODEL=3                 !< Flag for SF\%HEAT_TRANSFER_MODEL
+INTEGER, PARAMETER :: DEFAULT_HTC_MODEL=0          !< Flag for SF\%HEAT_TRANSFER_MODEL
+INTEGER, PARAMETER :: LOGLAW_HTC_MODEL=1           !< Flag for SF\%HEAT_TRANSFER_MODEL
+INTEGER, PARAMETER :: RAYLEIGH_HTC_MODEL=3         !< Flag for SF\%HEAT_TRANSFER_MODEL
+INTEGER, PARAMETER :: IMPINGING_JET_HTC_MODEL=4    !< Flag for SF\%HEAT_TRANSFER_MODEL
+INTEGER, PARAMETER :: FM_HTC_MODEL=5               !< Flag for SF\%HEAT_TRANSFER_MODEL
+INTEGER, PARAMETER :: UGENT_HTC_MODEL=6            !< Flag for SF\%HEAT_TRANSFER_MODEL
 
 INTEGER, PARAMETER :: WALL_MODEL_BC=2              !< Flag for SF\%VELOCITY_BC_INDEX
 INTEGER, PARAMETER :: FREE_SLIP_BC=3               !< Flag for SF\%VELOCITY_BC_INDEX
@@ -255,6 +258,7 @@ LOGICAL :: CTRL_DIRECT_FORCE=.FALSE.                !< Allow adjustable direct f
 LOGICAL :: REACTING_THIN_OBSTRUCTIONS=.FALSE.       !< Thin obstructions that off-gas are present
 LOGICAL :: SMOKE3D_16=.FALSE.                       !< Output 3D smoke values using 16 bit integers
 LOGICAL :: CHECK_BOUNDARY_ONE_D_ARRAYS=.FALSE.      !< Flag that indicates that ONE_D array dimensions need to be checked
+LOGICAL :: TENSOR_DIFFUSIVITY=.FALSE.               !< If true, use experimental tensor diffusivity model for spec and tmp
 
 INTEGER, ALLOCATABLE, DIMENSION(:) :: CHANGE_TIME_STEP_INDEX      !< Flag to indicate if a mesh needs to change time step
 INTEGER, ALLOCATABLE, DIMENSION(:) :: SETUP_PRESSURE_ZONES_INDEX  !< Flag to indicate if a mesh needs to keep searching for ZONEs
@@ -269,6 +273,7 @@ INTEGER :: N_TERRAIN_IMAGES=0                                             !< Num
 CHARACTER(FORMULA_LENGTH), DIMENSION(MAX_TERRAIN_IMAGES) :: TERRAIN_IMAGE !< Name of external terrain image
 CHARACTER(CHID_LENGTH) :: CHID                                            !< Job ID
 CHARACTER(CHID_LENGTH) :: RESTART_CHID                                    !< Job ID for a restarted case
+CHARACTER(FILE_LENGTH) :: RESULTS_DIR                                     !< Custom directory for output
 
 ! Dates, version numbers, revision numbers
 
@@ -334,7 +339,6 @@ REAL(EB) :: NORTH_BEARING=0._EB                !< North bearing for terrain map
 REAL(EB) :: LATITUDE=10000._EB                 !< Latitude for geostrophic calculation
 REAL(EB) :: GEOSTROPHIC_WIND(2)=0._EB          !< Wind vector (m/s)
 REAL(EB) :: DY_MIN_BLOWING=1.E-8_EB            !< Parameter in liquid evaporation algorithm (m)
-REAL(EB) :: MINIMUM_FILM_THICKNESS=1.E-5_EB    !< Minimum thickness of liquid film on a solid surface (m)
 REAL(EB) :: SOOT_DENSITY=1800._EB              !< Density of solid soot (kg/m3)
 REAL(EB) :: HVAC_MASS_TRANSPORT_CELL_L=-1._EB  !< Global cell size for HVAC mass transport (m)
 
@@ -461,8 +465,10 @@ CHARACTER(LABEL_LENGTH), POINTER, DIMENSION(:) :: RAMP_ID,RAMP_TYPE
 INTEGER :: MAX_RAMPS=100,I_RAMP_GX,I_RAMP_GY,I_RAMP_GZ,&
            I_RAMP_PGF_T,I_RAMP_FVX_T,I_RAMP_FVY_T,I_RAMP_FVZ_T,N_RAMP=0,I_RAMP_TMP0_Z=0,I_RAMP_P0_Z=0,&
            I_RAMP_SPEED_T=0,I_RAMP_SPEED_Z=0,I_RAMP_DIRECTION_T=0,I_RAMP_DIRECTION_Z=0
-INTEGER, PARAMETER :: TIME_HEAT=-1,TIME_VELO=-2,TIME_TEMP=-3,TIME_EFLUX=-4,TIME_PART=-5,TANH_RAMP=-2,TSQR_RAMP=-1,&
-                      VELO_PROF_X=-6,VELO_PROF_Y=-7,VELO_PROF_Z=-8,TIME_TGF=-9,TIME_TGB=-10,TIME_TB=-11,N_SURF_RAMPS=11
+INTEGER, PARAMETER :: MAX_QDOTPP_REF=10                    !< Maximum number of REFERENCE_HEAT_FLUX curves for Spyro
+INTEGER, PARAMETER :: TIME_HEAT=-11,TIME_VELO=-2,TIME_TEMP=-3,TIME_EFLUX=-4,TIME_PART=-5,TANH_RAMP=-2,TSQR_RAMP=-1,&
+                      VELO_PROF_X=-6,VELO_PROF_Y=-7,VELO_PROF_Z=-8,TIME_TGF=-9,TIME_TGB=-10,TIME_TB=-1,&
+                      N_SURF_RAMPS=11+MAX_QDOTPP_REF-1
 
 ! TABLe parameters
 
@@ -505,7 +511,10 @@ REAL(EB), ALLOCATABLE, DIMENSION(:) :: TP_BB                     !< Lower off-di
 REAL(EB), ALLOCATABLE, DIMENSION(:) :: TP_CC                     !< Right hand side of 1-D tunnel pressure linear system
 REAL(EB), ALLOCATABLE, DIMENSION(:) :: TP_DD                     !< Diagonal of tri-diagonal matrix for tunnel pressure solver
 REAL(EB), ALLOCATABLE, DIMENSION(:) :: TP_RDXN                   !< Reciprocal of the distance between tunnel precon points
-REAL(EB), ALLOCATABLE, DIMENSION(:) :: H_BAR                     !< Pressure solution of 1-D tunnel pressure solver
+REAL(EB), ALLOCATABLE, TARGET, DIMENSION(:) :: H_BAR             !< Pressure solution of 1-D tunnel pressure solver, predictor step
+REAL(EB), ALLOCATABLE, TARGET, DIMENSION(:) :: H_BAR_S           !< Pressure solution of 1-D tunnel pressure solver, corrector step
+REAL(EB), ALLOCATABLE, TARGET, DIMENSION(:) :: DUDT_BAR          !< Average du/dt for 1-D tunnel pressure solver, predictor step
+REAL(EB), ALLOCATABLE, TARGET, DIMENSION(:) :: DUDT_BAR_S        !< Average du/dt for 1-D tunnel pressure solver, corrector step
 INTEGER, ALLOCATABLE, DIMENSION(:) :: COUNTS_TP                  !< Counter for MPI calls used for 1-D tunnel pressure solver
 INTEGER, ALLOCATABLE, DIMENSION(:) :: DISPLS_TP                  !< Displacements for MPI calls used for 1-D tunnel pressure solver
 INTEGER, ALLOCATABLE, DIMENSION(:) :: I_OFFSET                   !< Spatial index of tunnel
@@ -531,7 +540,7 @@ INTEGER                              :: LU_ERR=ERROR_UNIT,LU_END=2,LU_GIT=3,LU_S
                                         LU_CATF=9
 INTEGER                              :: LU_MASS,LU_HRR,LU_STEPS,LU_NOTREADY,LU_VELOCITY_ERROR,LU_CFL,LU_LINE=-1,LU_CUTCELL
 INTEGER                              :: LU_HISTOGRAM,LU_HVAC
-INTEGER                              :: LU_GEOC=-1,LU_TGA,LU_INFO,LU_DEVC_CTRL=-1
+INTEGER                              :: LU_GEOC=-1,LU_TGA,LU_INFO,LU_DEVC_CTRL=-1,LU_RDIR
 INTEGER, ALLOCATABLE, DIMENSION(:)   :: LU_PART,LU_PROF,LU_XYZ,LU_TERRAIN,LU_PL3D,LU_DEVC,LU_STATE,LU_CTRL,LU_CORE,LU_RESTART
 INTEGER, ALLOCATABLE, DIMENSION(:)   :: LU_VEG_OUT,LU_GEOM,LU_CFACE_GEOM
 INTEGER                              :: LU_GEOM_TRAN
