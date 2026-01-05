@@ -80,7 +80,7 @@ A snapshot the instantaneous velocity contours of the flow over a backward facin
     \label{fig:vel_slice}
 \end{figure}
 
-The profile of the inlet streamwise velocity component, $\overline{u}(z)$, is specified using experimental data provided by Jovic and Driver~\cite{JD:1994}, while the transverse components, $\overline{v}(z)$ and $\overline{w}(z)$, are set to zero.  Turbulent eddies are injected using the Synthetic Eddy Method of Jarrin~\cite{Jarrin:2008}.  Eddies are injected at random locations in the bottom two inlets, advected with the flow over a distance equal to the maximum eddy length scale and recycled at the inlet.  The inlet maximum eddy length scale is 0.03~m, the number of eddies is 100, and the RMS velocity is set to 0.5~m/s for the middle inlet and 1.0~m/s for the bottom inlet to match the measured inlet data at $x/h=-3$ as closely as possible.
+The profile of the inlet stream-wise velocity component, $\overline{u}(z)$, is specified using experimental data provided by Jovic and Driver~\cite{JD:1994}, while the transverse components, $\overline{v}(z)$ and $\overline{w}(z)$, are set to zero.  Turbulent eddies are injected using the Synthetic Eddy Method of Jarrin~\cite{Jarrin:2008}.  Eddies are injected at random locations in the bottom two inlets, advected with the flow over a distance equal to the maximum eddy length scale and recycled at the inlet.  The inlet maximum eddy length scale is 0.03~m, the number of eddies is 100, and the RMS velocity is set to 0.5~m/s for the middle inlet and 1.0~m/s for the bottom inlet to match the measured inlet data at $x/h=-3$ as closely as possible.
 
 The boundary conditions for velocity and pressure on the top of the domain are ``mirror'', that is, zero gradient.  The spanwise boundaries are periodic.  The outlet boundary is ``open''.
 
@@ -306,50 +306,20 @@ Below we plot the same results but arranged in a different way.  The height dime
 \section{NIST Pool Fires}
 \label{NIST_Pool_Fires_Velocity}
 
-% THE CL RMS VELOCITIES ARE CURRENTLY UNDER INVESTIGATTION...
-
-% Figures~\ref{NIST_Pool_Fires_Velocity_1} and \ref{NIST_Pool_Fires_Velocity_2} display centerline profiles of mean and rms vertical velocity for 30~cm acetone, ethanol, and methanol pool fires; and 37~cm methane and propane gas burners~\cite{Sung:TN2021}.
-
-% \begin{figure}[!h]
-% \begin{tabular*}{\textwidth}{l@{\extracolsep{\fill}}r}
-% \includegraphics[height=2.15in]{SCRIPT_FIGURES/NIST_Pool_Fires/NIST_Acetone_w_CL} &
-% \includegraphics[height=2.15in]{SCRIPT_FIGURES/NIST_Pool_Fires/NIST_Acetone_w_CL_RMS} \\
-% \includegraphics[height=2.15in]{SCRIPT_FIGURES/NIST_Pool_Fires/NIST_Ethanol_w_CL} &
-% \includegraphics[height=2.15in]{SCRIPT_FIGURES/NIST_Pool_Fires/NIST_Ethanol_w_CL_RMS} \\
-% \includegraphics[height=2.15in]{SCRIPT_FIGURES/NIST_Pool_Fires/NIST_Methane_w_CL} &
-% \includegraphics[height=2.15in]{SCRIPT_FIGURES/NIST_Pool_Fires/NIST_Methane_w_CL_RMS}
-% \end{tabular*}
-% \caption[NIST Pool Fires, centerline velocity]{NIST Pool Fires, centerline profiles of mean and rms vertical velocity for 30~cm acetone and ethanol liquid pool fires; and a 37~cm methane gaseous fire.}
-% \label{NIST_Pool_Fires_Velocity_1}
-% \end{figure}
-
-% \newpage
-
-% \begin{figure}[p]
-% \begin{tabular*}{\textwidth}{l@{\extracolsep{\fill}}r}
-% \includegraphics[height=2.15in]{SCRIPT_FIGURES/NIST_Pool_Fires/NIST_Methanol_w_CL} &
-% \includegraphics[height=2.15in]{SCRIPT_FIGURES/NIST_Pool_Fires/NIST_Methanol_w_CL_RMS} \\
-% \includegraphics[height=2.15in]{SCRIPT_FIGURES/NIST_Pool_Fires/NIST_Propane_20kW_w_CL} &
-% \includegraphics[height=2.15in]{SCRIPT_FIGURES/NIST_Pool_Fires/NIST_Propane_20kW_w_CL_RMS} \\
-% \includegraphics[height=2.15in]{SCRIPT_FIGURES/NIST_Pool_Fires/NIST_Propane_34kW_w_CL} &
-% \includegraphics[height=2.15in]{SCRIPT_FIGURES/NIST_Pool_Fires/NIST_Propane_34kW_w_CL_RMS}
-% \end{tabular*}
-% \caption[NIST Pool Fires, centerline velocity]{NIST Pool Fires, centerline profiles of mean and rms vertical velocity for a 30~cm methanol fire; and 37~cm propane fires of 20~kW and 34~kW.}
-% \label{NIST_Pool_Fires_Velocity_2}
-% \end{figure}
-
-Figure~\ref{NIST_Pool_Fires_Velocity_1} displays centerline profiles of mean vertical velocity for 30~cm acetone, ethanol, and methanol pool fires; and 37~cm methane and propane gas burners~\cite{Sung:TN2021}.
+Figure~\ref{NIST_Pool_Fires_Velocity_1} displays centerline profiles of mean vertical velocity for 30~cm acetone, ethanol, heptane, and methanol pool fires; and 37~cm methane and propane gas burners~\cite{Sung:TN2162r1}.
 
 \begin{figure}[!h]
 \begin{tabular*}{\textwidth}{l@{\extracolsep{\fill}}r}
 \includegraphics[height=2.15in]{SCRIPT_FIGURES/NIST_Pool_Fires/NIST_Acetone_w_CL} &
+\includegraphics[height=2.15in]{SCRIPT_FIGURES/NIST_Pool_Fires/NIST_Ethanol_w_CL}  \\
+\includegraphics[height=2.15in]{SCRIPT_FIGURES/NIST_Pool_Fires/NIST_Heptane_w_CL}  &
 \includegraphics[height=2.15in]{SCRIPT_FIGURES/NIST_Pool_Fires/NIST_Methanol_w_CL} \\
-\includegraphics[height=2.15in]{SCRIPT_FIGURES/NIST_Pool_Fires/NIST_Ethanol_w_CL}  &
-\includegraphics[height=2.15in]{SCRIPT_FIGURES/NIST_Pool_Fires/NIST_Methane_w_CL} \\
-\includegraphics[height=2.15in]{SCRIPT_FIGURES/NIST_Pool_Fires/NIST_Propane_20kW_w_CL} &
-\includegraphics[height=2.15in]{SCRIPT_FIGURES/NIST_Pool_Fires/NIST_Propane_34kW_w_CL}
+\includegraphics[height=2.15in]{SCRIPT_FIGURES/NIST_Pool_Fires/NIST_Methane_w_CL} & 
+\includegraphics[height=2.15in]{SCRIPT_FIGURES/NIST_Pool_Fires/NIST_Propane_20kW_w_CL} \\
+\includegraphics[height=2.15in]{SCRIPT_FIGURES/NIST_Pool_Fires/NIST_Propane_34kW_w_CL} &
+\includegraphics[height=2.15in]{SCRIPT_FIGURES/NIST_Pool_Fires/NIST_Propane_50kW_w_CL}
 \end{tabular*}
-\caption[NIST Pool Fires, centerline velocity]{NIST Pool Fires, centerline profiles of mean vertical velocity for 30~cm acetone, methanol, and ethanol liquid pool fires, a 37~cm methane fire, and propane fires of 20~kW and 34~kW.}
+\caption[NIST Pool Fires, centerline velocity]{NIST Pool Fires, centerline profiles of mean vertical velocity for 30~cm acetone, ethanol, heptane, and methanol liquid pool fires, a 37~cm methane fire, and propane fires of 20~kW, 34~kW, and 50~kW.}
 \label{NIST_Pool_Fires_Velocity_1}
 \end{figure}
 
@@ -729,14 +699,14 @@ Bi-directional probes were positioned inside two of the four inlet openings and 
 \put(1.87,2){\framebox(0.75,0.7){ }}
 \put(2.78,2){\framebox(0.5,0.7){ }}
 
-\put(0.9,1){Below: Inlet vents on the west wall looking inwards.}
+\put(0.9,1){Below: Inlet vents on the west wall looking inward.}
 
 \put(0.3,0.1){\framebox(0.5,0.7){ }}
 \put(0.96,0.1){\framebox(0.75,0.7){ }}
 \put(1.87,0.1){\framebox(0.75,0.7){ }}
 \put(2.78,0.1){\framebox(0.5,0.7){ }}
 
-\put(0.9,1.8){Above: Outlet vents on the east wall looking outwards.}
+\put(0.9,1.8){Above: Outlet vents on the east wall looking outward.}
 
 \put(2.13,0.71){\circle*{0.03}}
 \put(2.05,0.68){1}
@@ -846,7 +816,7 @@ Bi-directional probes were positioned inside two of the four inlet openings and 
 \begin{figure}[h!]
 \begin{center}
 \begin{tabular}{l}
-\includegraphics[height=4.0in]{SCRIPT_FIGURES/ScatterPlots/FDS_Velocity}
+\includegraphics[height=4.0in]{SCRIPT_FIGURES/Scatterplots/FDS_Velocity}
 \end{tabular}
 \end{center}
 \caption[Summary of velocity predictions]

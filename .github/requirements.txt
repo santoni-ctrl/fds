@@ -1,0 +1,21 @@
+# requirements.txt for pip install
+
+# User's minimal environment for FDS
+
+numpy<2
+matplotlib
+pandas
+scipy
+seaborn
+pygments
+ipython
+# cantera>=3.1 pulls ruamel.yaml>=0.19 which requires ruamel.yaml.clibz (Python.h)
+cantera<3.1
+ruamel.yaml<0.19
+pyfdstools
+bibtexautocomplete
+
+# Local utility packages (imports fdsplotlib)
+-e ../Utilities/Python
+
+
